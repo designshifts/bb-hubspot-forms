@@ -1,0 +1,106 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "think-blocks/hubspot-form",
+	"version": "0.1.0",
+	"title": "Hubspot Form",
+	"category": "forms",
+	"icon": "forms",
+	"description": "Form to collect and send data to hubspot and the GTM dataLayer",
+	"keywords": ["hubspot", "form", "contact", "progressive"],
+	"supports": {
+	  "html": false
+	},
+	"attributes": {
+		"content": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonHtml": {
+			"type": "string",
+			"default": "<!-- wp:button {'backgroundColor':'flare','textColor':'rooted','style':{'elements':{'link':{'color':{'text':'var:preset|color|rooted'}}}},'showArrow':true} --><div class='wp-block-button has-arrow arrow-right' style='width:100%; margin-top: 10px;'><button type='submit' name='form_submit' class='wp-block-button__link has-rooted-color has-flare-background-color has-text-color has-background has-link-color wp-element-button g-recaptcha'>Submit</button></div><!-- /wp:button -->"
+		},
+		"thankYouMessage": {
+			"type": "string",
+			"default": "Thank you for submitting the form!"
+		},
+        "formId": {
+            "type": "string",
+            "default": ""
+        },
+		"redirectUrl": { 
+			"type": "string" 
+		},
+		"appendEmailToRedirect": {
+			"type": "boolean",
+			"default": false
+		},
+		"downloadable_id": {
+			"type": "string",
+			"default": ""
+		},
+		"blockEmailDomains": {
+			"type": "boolean",
+			"default": false
+		},
+		"progressiveMappings": {
+			"type": "object",
+			"default": {}
+		},
+		"hiddenFields": {
+			"type": "array",
+			"default": []
+		},
+		"enableSocialMediaSelector": {
+			"type": "boolean",
+			"default": false
+		},
+		"socialMediaSelectorLabel": {
+			"type": "string",
+			"default": "Primary social media platform"
+		},
+		"socialMediaDisclaimer": {
+			"type": "string",
+			"default": "We'll only use this to connect with you about the event."
+		},
+		"enabledSocialPlatforms": {
+			"type": "array",
+			"default": ["instagram", "youtube", "tiktok", "twitter", "linkedin", "other"]
+		},
+		"enableSoloDetect": {
+			"type": "boolean",
+			"default": false
+		},
+		"enableMarketingConsent": {
+			"type": "boolean",
+			"default": true
+		},
+		"hideKnownFields": {
+			"type": "boolean",
+			"default": false
+		}
+
+	},
+	"styles": [
+		{
+			"name": "first-two-columns",
+			"label": "First Two Columns"
+		},
+		{
+			"name": "two-columns",
+			"label": "Two Columns"
+		}
+	],
+	"textdomain": "hubspot-form",
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"render": "file:./render.php",
+	"viewScript": [
+		"file:./view.js",
+		"file:./email-validation.js",
+		"file:./phone-country-code.js",
+		"file:./solo-detect.js",
+		"file:./socials.js"
+	]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "hubspot-forms",
+  "version": "1.0.0",
+	"description": "Customizable Hubspot Forms for WordPress",
+	"main": "index.js",
+	"scripts": {
+		"build": "wp-scripts build --config webpack.config.js --webpack-src-dir=src/blocks",
+		"create-block": "cd ./src/blocks && npx @wordpress/create-block --namespace=think-blocks --no-plugin",
+		"create-block:dynamic": "cd ./src/blocks && npx @wordpress/create-block --namespace=think-blocks --no-plugin --variant=dynamic",
+		"start": "wp-scripts start --config webpack.config.js --webpack-src-dir=src/blocks"
+	},
+	"keywords": [],
+	"author": "",
+	"devDependencies": {
+		"@wordpress/prettier-config": "^4.35.0",
+		"@wordpress/scripts": "^31.1.0",
+		"glob": "^10.5.0",
+		"axios": "^1.13.2",
+		"js-cookie": "^3.0.1"
+	}
+}
