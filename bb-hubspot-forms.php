@@ -1,13 +1,22 @@
 <?php
 /**
  * Plugin Name: BB HubSpot Forms
+ * Plugin URI: https://betterbuilds.app
  * Description: Security-first HubSpot forms for WordPress.
  * Version: 0.1.0
+ * Requires at least: 6.0
+ * Requires PHP: 8.0
  * Author: Better Builds
+ * Author URI: https://betterbuilds.app
+ * License: GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: bb-hubspot-forms
+ * Domain Path: /languages
+ *
+ * @package BB_HubSpot_Forms
  */
 
-if ( ! defined( 'ABSPATH' ) ) 
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -18,6 +27,9 @@ define( 'BBHUBSPOT_FORMS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once BBHUBSPOT_FORMS_PLUGIN_DIR . 'src/Plugin.php';
 
+register_activation_hook( __FILE__, 'bb_hubspot_forms_activate' );
+register_deactivation_hook( __FILE__, 'bb_hubspot_forms_deactivate' );
+
 add_action(
 	'plugins_loaded',
 	static function () {
@@ -25,3 +37,36 @@ add_action(
 	}
 );
 
+/**
+ * Activation hook.
+ *
+ * @return void
+ */
+function bb_hubspot_forms_activate(): void {
+	\BBHubspotForms\Plugin::init();
+	\BBHubspotForms\Forms\CPT::register_cpt();
+	flush_rewrite_rules();
+}
+
+/**
+ * Deactivation hook.
+ *
+ * @return void
+ */
+function bb_hubspot_forms_deactivate(): void {
+	bb_hubspot_forms_clear_transients();
+	flush_rewrite_rules();
+}
+
+/**
+ * Clear plugin transients.
+ *
+ * @return void
+ */
+function bb_hubspot_forms_clear_transients(): void {
+	global $wpdb;
+	$like = $wpdb->esc_like( '_transient_bb-hubspot-forms_' ) . '%';
+	$timeout_like = $wpdb->esc_like( '_transient_timeout_bb-hubspot-forms_' ) . '%';
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $like, $timeout_like ) );
+}

@@ -12,11 +12,12 @@ final class Renderer {
 	}
 
 	public static function register_assets(): void {
+		$frontend_path = BBHUBSPOT_FORMS_PLUGIN_DIR . 'assets/js/frontend.js';
 		wp_register_script(
 			'bb-hubspot-forms-frontend',
 			BBHUBSPOT_FORMS_PLUGIN_URL . 'assets/js/frontend.js',
 			array(),
-			BBHUBSPOT_FORMS_VERSION,
+			file_exists( $frontend_path ) ? filemtime( $frontend_path ) : BBHUBSPOT_FORMS_VERSION,
 			true
 		);
 	}

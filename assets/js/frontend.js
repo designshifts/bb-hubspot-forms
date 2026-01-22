@@ -31,58 +31,64 @@
 
 	const submitForm = async (form) => {
 		const messageEl = form.querySelector('.bb-hubspot-forms-form__message');
-		const formId = form.getAttribute('data-form-id');
-		const token = form.getAttribute('data-token');
-		const schemaVersion = form.getAttribute('data-schema-version');
-		const redirectUrl = form.getAttribute('data-redirect-url');
-		const appendEmail = form.getAttribute('data-append-email') === '1';
-		const formData = new FormData(form);
-		const fields = {};
+		try {
+			const formId = form.getAttribute('data-form-id');
+			const token = form.getAttribute('data-token');
+			const schemaVersion = form.getAttribute('data-schema-version');
+			const redirectUrl = form.getAttribute('data-redirect-url');
+			const appendEmail = form.getAttribute('data-append-email') === '1';
+			const formData = new FormData(form);
+			const fields = {};
 
-		formData.forEach((value, key) => {
-			fields[key] = value;
-		});
+			formData.forEach((value, key) => {
+				fields[key] = value;
+			});
 
-		const captcha = await getCaptchaToken();
+			const captcha = await getCaptchaToken();
 
-		const payload = {
-			formId: formId,
-			token: token,
-			schemaVersion: schemaVersion,
-			fields,
-			context: {
-				pageUri: window.location.href,
-				pageName: document.title,
-			},
-			redirectUrl: redirectUrl,
-			appendEmailToRedirect: appendEmail,
-			captchaToken: captcha.token,
-			captchaAction: captcha.action,
-		};
+			const payload = {
+				formId: formId,
+				token: token,
+				schemaVersion: schemaVersion,
+				fields,
+				context: {
+					pageUri: window.location.href,
+					pageName: document.title,
+				},
+				redirectUrl: redirectUrl,
+				appendEmailToRedirect: appendEmail,
+				captchaToken: captcha.token,
+				captchaAction: captcha.action,
+			};
 
+			messageEl.textContent = 'Submitting...';
 
-		messageEl.textContent = 'Submitting...';
+			const response = await fetch(window.bbHubspotFormsConfig?.restUrl || '', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
 
-		const response = await fetch(window.bbHubspotFormsConfig?.restUrl || '', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload),
-		});
-
-		const data = await response.json().catch(() => ({}));
-		if (!response.ok || !data.success) {
-			messageEl.textContent = data?.errors?.submission || 'Submission failed.';
-			return;
-		}
-
-		messageEl.textContent = data.message || 'Submitted successfully.';
-		if (redirectUrl) {
-			let url = redirectUrl;
-			if (appendEmail && fields.email) {
-				const separator = url.includes('?') ? '&' : '?';
-				url = `${url}${separator}email=${encodeURIComponent(fields.email)}`;
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok || !data.success) {
+				messageEl.textContent = data?.errors?.submission || 'Submission failed.';
+				return;
 			}
-			window.location.href = url;
+
+			messageEl.textContent = data.message || 'Submitted successfully.';
+			if (redirectUrl) {
+				let url = redirectUrl;
+				if (appendEmail && fields.email) {
+					const separator = url.includes('?') ? '&' : '?';
+					url = `${url}${separator}email=${encodeURIComponent(fields.email)}`;
+				}
+				window.location.href = url;
+			}
+		} catch (error) {
+			messageEl.textContent = 'Unable to submit form. Please try again.';
+			if (window.console && console.error) {
+				console.error('BB HubSpot Forms:', error);
+			}
 		}
 	};
 

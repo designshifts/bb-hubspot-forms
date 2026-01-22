@@ -24,6 +24,23 @@ final class SubmitController {
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'handle_submit' ),
 				'permission_callback' => '__return_true',
+				'args'                => array(
+					'formId' => array(
+						'required'          => true,
+						'validate_callback' => static function ( $param ) {
+							return is_numeric( $param ) && (int) $param > 0;
+						},
+						'sanitize_callback' => 'absint',
+					),
+					'token' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'fields' => array(
+						'type'    => 'object',
+						'default' => array(),
+					),
+				),
 			)
 		);
 	}

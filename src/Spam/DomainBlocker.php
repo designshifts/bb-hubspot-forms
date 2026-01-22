@@ -30,16 +30,26 @@ final class DomainBlocker {
 	}
 
 	private static function load_list( string $filename ): array {
+		$cache_key = 'bb_hubspot_forms_domains_' . md5( $filename );
+		$cached    = wp_cache_get( $cache_key );
+		if ( $cached !== false ) {
+			return is_array( $cached ) ? $cached : array();
+		}
+
 		$path = BBHUBSPOT_FORMS_PLUGIN_DIR . 'data/' . $filename;
 		if ( ! file_exists( $path ) ) {
+			wp_cache_set( $cache_key, array(), '', HOUR_IN_SECONDS );
 			return array();
 		}
 		$contents = file_get_contents( $path );
 		if ( ! $contents ) {
+			wp_cache_set( $cache_key, array(), '', HOUR_IN_SECONDS );
 			return array();
 		}
 		$data = json_decode( $contents, true );
-		return is_array( $data ) ? $data : array();
+		$result = is_array( $data ) ? $data : array();
+		wp_cache_set( $cache_key, $result, '', HOUR_IN_SECONDS );
+		return $result;
 	}
 
 	private static function matches_subdomain( string $domain, array $blocked ): bool {

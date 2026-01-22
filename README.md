@@ -33,6 +33,13 @@ Security-first HubSpot forms for WordPress.
 - The Test button uses current field values; click Save Changes to persist.
 - Tokens are stored server-side and never exposed to the browser.
 
+## Secure token storage
+Define an encryption key in `wp-config.php` to enable encrypted storage of the HubSpot Private App token:
+
+```
+define( 'BB_HUBSPOT_ENCRYPTION_KEY', 'put-a-long-random-string-here' );
+```
+
 ## Docs
 - `/docs`
 

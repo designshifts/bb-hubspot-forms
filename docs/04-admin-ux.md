@@ -7,6 +7,7 @@
 - Private App Access Token (`pat-...`)
 - Test HubSpot Connection button
 - Note: OAuth/MCP auth apps are not used
+- Encryption key required for token storage (`BB_HUBSPOT_ENCRYPTION_KEY`)
 
 ### Captcha Provider
 - Provider type (None, reCAPTCHA v3, Turnstile, hCaptcha)

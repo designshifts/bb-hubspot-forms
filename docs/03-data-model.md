@@ -85,7 +85,7 @@ Token expiry in seconds.
 Global plugin configuration stored in options.
 
 - `portal_id`: HubSpot portal ID (account ID)
-- `private_token`: HubSpot Private App access token (`pat-...`)
+- `private_token`: HubSpot Private App access token (`pat-...`, encrypted at rest when key is set)
 - `captcha_provider`: CAPTCHA provider (`recaptcha_v3`, `turnstile`, `hcaptcha`, or empty for disabled)
 - `captcha_site_key`: CAPTCHA site key
 - `captcha_secret_key`: CAPTCHA secret key

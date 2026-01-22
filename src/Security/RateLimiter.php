@@ -4,8 +4,8 @@ namespace BBHubspotForms\Security;
 
 final class RateLimiter {
 	public static function check( string $ip, int $limit_per_minute = 50, int $burst = 10, int $burst_window = 15 ): bool {
-		$rate_key  = 'bb-hubspot-forms_rate_' . md5( $ip );
-		$burst_key = 'bb-hubspot-forms_burst_' . md5( $ip );
+		$rate_key  = 'bb-hubspot-forms_rate_' . wp_hash( $ip );
+		$burst_key = 'bb-hubspot-forms_burst_' . wp_hash( $ip );
 
 		$burst_count = get_transient( $burst_key );
 		if ( $burst_count === false ) {

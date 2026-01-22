@@ -57,7 +57,7 @@ final class SettingsPage {
 			array(
 				'type'        => 'password',
 				'placeholder' => __( 'pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', 'bb-hubspot-forms' ),
-				'description' => __( 'A secure access token generated from a HubSpot Private App. Create one in HubSpot under Settings -> Integrations -> Private Apps. This plugin does not use OAuth or MCP Auth Apps.', 'bb-hubspot-forms' ),
+				'description' => __( 'A secure access token generated from a HubSpot Private App. Create one in HubSpot under Settings -> Integrations -> Private Apps. Enter to replace the saved token; leave blank to keep the current token.', 'bb-hubspot-forms' ),
 				'note'        => __( 'This token is stored securely and is never exposed to the browser.', 'bb-hubspot-forms' ),
 			),
 			'bb_hubspot_forms_settings_connection'
@@ -110,6 +110,7 @@ final class SettingsPage {
 			array(
 				'placeholder' => __( '0.5', 'bb-hubspot-forms' ),
 				'description' => __( 'Minimum reCAPTCHA v3 score required to accept a submission. Range: 0.0–1.0.', 'bb-hubspot-forms' ),
+				'input_class' => 'bb-hubspot-forms-recaptcha-field',
 			),
 			'bb_hubspot_forms_settings_captcha'
 		);
@@ -120,6 +121,7 @@ final class SettingsPage {
 			array(
 				'placeholder' => __( 'hubspot_form_submit', 'bb-hubspot-forms' ),
 				'description' => __( 'Expected reCAPTCHA v3 action name used during verification.', 'bb-hubspot-forms' ),
+				'input_class' => 'bb-hubspot-forms-recaptcha-field',
 			),
 			'bb_hubspot_forms_settings_captcha'
 		);
@@ -129,6 +131,7 @@ final class SettingsPage {
 			__( 'Captcha Site Key', 'bb-hubspot-forms' ),
 			array(
 				'description' => __( 'Your public CAPTCHA site key from your CAPTCHA provider.', 'bb-hubspot-forms' ),
+				'input_class' => 'bb-hubspot-forms-captcha-field',
 			),
 			'bb_hubspot_forms_settings_captcha'
 		);
@@ -139,6 +142,7 @@ final class SettingsPage {
 			array(
 				'type'        => 'password',
 				'description' => __( 'Your private CAPTCHA secret key. This key is used server-side and is never exposed publicly.', 'bb-hubspot-forms' ),
+				'input_class' => 'bb-hubspot-forms-captcha-field',
 			),
 			'bb_hubspot_forms_settings_captcha'
 		);
@@ -198,14 +202,18 @@ final class SettingsPage {
 			'bb-hubspot-forms-admin-settings',
 			BBHUBSPOT_FORMS_PLUGIN_URL . 'assets/css/admin-settings.css',
 			array(),
-			BBHUBSPOT_FORMS_VERSION
+			file_exists( BBHUBSPOT_FORMS_PLUGIN_DIR . 'assets/css/admin-settings.css' )
+				? filemtime( BBHUBSPOT_FORMS_PLUGIN_DIR . 'assets/css/admin-settings.css' )
+				: BBHUBSPOT_FORMS_VERSION
 		);
 
 		wp_enqueue_script(
 			'bb-hubspot-forms-admin-settings',
 			BBHUBSPOT_FORMS_PLUGIN_URL . 'assets/js/admin-settings.js',
 			array(),
-			BBHUBSPOT_FORMS_VERSION,
+			file_exists( BBHUBSPOT_FORMS_PLUGIN_DIR . 'assets/js/admin-settings.js' )
+				? filemtime( BBHUBSPOT_FORMS_PLUGIN_DIR . 'assets/js/admin-settings.js' )
+				: BBHUBSPOT_FORMS_VERSION,
 			true
 		);
 		wp_localize_script(
@@ -284,6 +292,25 @@ final class SettingsPage {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'BB HubSpot Forms', 'bb-hubspot-forms' ); ?></h1>
+			<?php
+			if ( isset( $_GET['settings-updated'] ) ) {
+				add_settings_error(
+					'bb_hubspot_forms_settings_group',
+					'settings_updated',
+					__( 'Settings saved.', 'bb-hubspot-forms' ),
+					'updated'
+				);
+			}
+
+			if ( Settings::has_encryption_key() ) {
+				echo '<div class="notice notice-success"><p>' . esc_html__( 'Encryption key detected. Tokens will be encrypted at rest.', 'bb-hubspot-forms' ) . '</p></div>';
+			} else {
+				echo '<div class="notice notice-warning"><p>' . esc_html__( 'Encryption key missing. Tokens cannot be saved until configured.', 'bb-hubspot-forms' ) . '</p>';
+				echo '<p><code>define( \'BB_HUBSPOT_ENCRYPTION_KEY\', \'put-a-long-random-string-here\' );</code></p></div>';
+			}
+
+			settings_errors( 'bb_hubspot_forms_settings_group' );
+			?>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( 'bb_hubspot_forms_settings_group' );
@@ -303,9 +330,15 @@ final class SettingsPage {
 		$placeholder = isset( $args['placeholder'] ) ? $args['placeholder'] : '';
 		$description = isset( $args['description'] ) ? $args['description'] : '';
 		$note        = isset( $args['note'] ) ? $args['note'] : '';
+		$input_class = isset( $args['input_class'] ) ? $args['input_class'] : '';
+
+		if ( $key === 'private_token' ) {
+			$value = '';
+		}
 		printf(
-			'<input type="%1$s" class="regular-text" name="%2$s[%3$s]" value="%4$s" placeholder="%5$s" autocomplete="off" />',
+			'<input type="%1$s" class="regular-text %2$s" name="%3$s[%4$s]" value="%5$s" placeholder="%6$s" autocomplete="off" />',
 			esc_attr( $type ),
+			esc_attr( $input_class ),
 			esc_attr( Settings::OPTION_KEY ),
 			esc_attr( $key ),
 			esc_attr( $value ),
@@ -317,6 +350,15 @@ final class SettingsPage {
 		if ( $note ) {
 			printf( '<p class="description"><em>%s</em></p>', esc_html( $note ) );
 		}
+		if ( $key === 'private_token' ) {
+			$stored = Settings::get_raw( 'private_token' );
+			if ( $stored !== '' ) {
+				printf( '<p class="description">%s</p>', esc_html__( 'A token is currently saved.', 'bb-hubspot-forms' ) );
+				if ( Settings::has_encryption_key() && ! Settings::is_encrypted_value( $stored ) ) {
+					printf( '<p class="description">%s</p>', esc_html__( 'Saved token is not encrypted yet. Save settings to upgrade encryption.', 'bb-hubspot-forms' ) );
+				}
+			}
+		}
 	}
 
 	public static function render_textarea_field( array $args ): void {
@@ -325,6 +367,7 @@ final class SettingsPage {
 		$value       = isset( $options[ $key ] ) ? $options[ $key ] : array();
 		$placeholder = isset( $args['placeholder'] ) ? $args['placeholder'] : '';
 		$description = isset( $args['description'] ) ? $args['description'] : '';
+		$input_class = isset( $args['input_class'] ) ? $args['input_class'] : '';
 		$lines       = array();
 
 		if ( is_array( $value ) ) {
@@ -342,7 +385,8 @@ final class SettingsPage {
 		}
 
 		printf(
-			'<textarea class="large-text" rows="6" name="%1$s[%2$s]" placeholder="%3$s">%4$s</textarea>',
+			'<textarea class="large-text %1$s" rows="6" name="%2$s[%3$s]" placeholder="%4$s">%5$s</textarea>',
+			esc_attr( $input_class ),
 			esc_attr( Settings::OPTION_KEY ),
 			esc_attr( $key ),
 			esc_attr( $placeholder ),
@@ -370,7 +414,8 @@ final class SettingsPage {
 		$options     = get_option( Settings::OPTION_KEY, array() );
 		$value       = isset( $options[ $key ] ) ? $options[ $key ] : '';
 		$description = isset( $args['description'] ) ? $args['description'] : '';
-		echo '<select name="' . esc_attr( Settings::OPTION_KEY ) . '[' . esc_attr( $key ) . ']">';
+		$input_class = isset( $args['input_class'] ) ? $args['input_class'] : '';
+		echo '<select class="' . esc_attr( $input_class ) . '" name="' . esc_attr( Settings::OPTION_KEY ) . '[' . esc_attr( $key ) . ']">';
 		foreach ( $args['options'] as $option_value => $label ) {
 			printf(
 				'<option value="%1$s" %2$s>%3$s</option>',
@@ -457,7 +502,28 @@ final class SettingsPage {
 		}
 
 		$output['portal_id']          = isset( $input['portal_id'] ) ? sanitize_text_field( $input['portal_id'] ) : '';
-		$output['private_token']      = isset( $input['private_token'] ) ? sanitize_text_field( $input['private_token'] ) : '';
+		$existing_token               = Settings::get_raw( 'private_token' );
+		$new_token                    = isset( $input['private_token'] ) ? sanitize_text_field( $input['private_token'] ) : '';
+		$new_token                    = trim( $new_token );
+		if ( $new_token === '' ) {
+			$output['private_token'] = $existing_token;
+		} elseif ( ! Settings::has_encryption_key() ) {
+			add_settings_error(
+				'bb_hubspot_forms_settings_group',
+				'missing_encryption_key',
+				__( 'Encryption key missing. Token was not saved.', 'bb-hubspot-forms' )
+			);
+			$output['private_token'] = $existing_token;
+		} elseif ( Settings::is_encrypted_value( $new_token ) ) {
+			add_settings_error(
+				'bb_hubspot_forms_settings_group',
+				'invalid_token_input',
+				__( 'Token input appears encrypted. Please paste the plain token value.', 'bb-hubspot-forms' )
+			);
+			$output['private_token'] = $existing_token;
+		} else {
+			$output['private_token'] = Settings::encrypt_for_storage( $new_token );
+		}
 		$provider                     = isset( $input['captcha_provider'] ) ? sanitize_text_field( $input['captcha_provider'] ) : '';
 		$provider                     = ( $provider === 'none' ) ? '' : $provider;
 		$allowed_providers             = array( '', 'recaptcha_v3', 'turnstile', 'hcaptcha' );

@@ -72,5 +72,40 @@
     if (button) {
       button.addEventListener("click", handleClick);
     }
+
+    var providerSelect = document.querySelector(
+      'select[name="bb_hubspot_forms_settings[captcha_provider]"]'
+    );
+    var toggleCaptchaFields = function () {
+      if (!providerSelect) {
+        return;
+      }
+      var provider = providerSelect.value;
+      var captchaFields = document.querySelectorAll(
+        ".bb-hubspot-forms-captcha-field"
+      );
+      var recaptchaFields = document.querySelectorAll(
+        ".bb-hubspot-forms-recaptcha-field"
+      );
+
+      captchaFields.forEach(function (field) {
+        var row = field.closest("tr");
+        if (row) {
+          row.style.display = provider ? "" : "none";
+        }
+      });
+
+      recaptchaFields.forEach(function (field) {
+        var row = field.closest("tr");
+        if (row) {
+          row.style.display = provider === "recaptcha_v3" ? "" : "none";
+        }
+      });
+    };
+
+    if (providerSelect) {
+      providerSelect.addEventListener("change", toggleCaptchaFields);
+      toggleCaptchaFields();
+    }
   });
 })();
