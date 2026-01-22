@@ -91,7 +91,14 @@ Global plugin configuration stored in options.
 - `captcha_secret_key`: CAPTCHA secret key
 - `captcha_min_score`: minimum reCAPTCHA v3 score (0.0–1.0)
 - `captcha_expected_action`: expected reCAPTCHA v3 action name
-- `form_ids`: list of `{ label, id }` entries used to populate the per-form Form ID dropdown
+- `consent_enabled`: boolean to enable consent options
+- `consent_text`: consent to process text
+- `marketing_enabled`: boolean to enable marketing consent
+- `marketing_text`: marketing consent text
+- `subscription_type_id`: HubSpot subscription type ID
+- `debug_enabled`: boolean to enable debug logging
+
+> **Note:** Form IDs are fetched directly from HubSpot using the Private App Token. No manual form ID configuration is required.
 
 ## Derived Behavior
 

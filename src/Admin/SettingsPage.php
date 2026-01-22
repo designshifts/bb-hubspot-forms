@@ -148,20 +148,73 @@ final class SettingsPage {
 		);
 
 		add_settings_section(
-			'bb_hubspot_forms_settings_form_ids',
-			__( 'Form IDs', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_consent',
+			__( 'Consent Defaults', 'bb-hubspot-forms' ),
 			'__return_false',
 			'bb-hubspot-forms-settings'
 		);
 
+		self::add_checkbox_field(
+			'consent_enabled',
+			__( 'Enable Consent', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_consent'
+		);
+
 		self::add_textarea_field(
-			'form_ids',
-			__( 'HubSpot Form IDs', 'bb-hubspot-forms' ),
+			'consent_text',
+			__( 'Consent to Process Text', 'bb-hubspot-forms' ),
 			array(
-				'placeholder' => __( "Newsletter Signup | 123e4567-e89b-12d3-a456-426614174000\nWebinar Registration | 123e4567-e89b-12d3-a456-426614174001", 'bb-hubspot-forms' ),
-				'description' => __( 'Add one form per line. Use "Label | Form ID" for friendly names or just the Form ID. These will be available as a dropdown on each form.', 'bb-hubspot-forms' ),
+				'placeholder' => __( 'I agree to allow Company Name to store and process my personal data.', 'bb-hubspot-forms' ),
+				'description' => __( 'Required consent copy for HubSpot legalConsentOptions.', 'bb-hubspot-forms' ),
 			),
-			'bb_hubspot_forms_settings_form_ids'
+			'bb_hubspot_forms_settings_consent'
+		);
+
+		self::add_checkbox_field(
+			'marketing_enabled',
+			__( 'Enable Marketing Consent', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_consent'
+		);
+
+		self::add_textarea_field(
+			'marketing_text',
+			__( 'Marketing Text', 'bb-hubspot-forms' ),
+			array(
+				'placeholder' => __( 'I agree to receive marketing communications.', 'bb-hubspot-forms' ),
+				'description' => __( 'Marketing consent text shown to HubSpot.', 'bb-hubspot-forms' ),
+			),
+			'bb_hubspot_forms_settings_consent'
+		);
+
+		self::add_text_field(
+			'subscription_type_id',
+			__( 'Subscription Type ID', 'bb-hubspot-forms' ),
+			array(
+				'type'        => 'number',
+				'placeholder' => __( '466761704', 'bb-hubspot-forms' ),
+				'description' => __( 'HubSpot subscriptionTypeId required for marketing consent.', 'bb-hubspot-forms' ),
+			),
+			'bb_hubspot_forms_settings_consent'
+		);
+
+		add_settings_section(
+			'bb_hubspot_forms_settings_appearance',
+			__( 'Appearance', 'bb-hubspot-forms' ),
+			'__return_false',
+			'bb-hubspot-forms-settings'
+		);
+
+		self::add_checkbox_field(
+			'enable_default_styles',
+			__( 'Enable Default Form Styles', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_appearance'
+		);
+
+		self::add_custom_field(
+			'appearance_notes',
+			__( 'Styling Notes', 'bb-hubspot-forms' ),
+			array( __CLASS__, 'render_appearance_notes' ),
+			'bb_hubspot_forms_settings_appearance'
 		);
 
 		add_settings_section(
@@ -190,6 +243,19 @@ final class SettingsPage {
 			__( 'Security Notes', 'bb-hubspot-forms' ),
 			array( __CLASS__, 'render_security_notes' ),
 			'bb_hubspot_forms_settings_security'
+		);
+
+		add_settings_section(
+			'bb_hubspot_forms_settings_debug',
+			__( 'Debug', 'bb-hubspot-forms' ),
+			'__return_false',
+			'bb-hubspot-forms-settings'
+		);
+
+		self::add_checkbox_field(
+			'debug_enabled',
+			__( 'Enable Debug Logging', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_debug'
 		);
 	}
 
@@ -248,13 +314,13 @@ final class SettingsPage {
 		);
 	}
 
-	private static function add_checkbox_field( string $key, string $label ): void {
+	private static function add_checkbox_field( string $key, string $label, string $section = 'bb_hubspot_forms_settings_main' ): void {
 		add_settings_field(
 			$key,
 			$label,
 			array( __CLASS__, 'render_checkbox_field' ),
 			'bb-hubspot-forms-settings',
-			'bb_hubspot_forms_settings_main',
+			$section,
 			array( 'key' => $key )
 		);
 	}
@@ -305,8 +371,15 @@ final class SettingsPage {
 			if ( Settings::has_encryption_key() ) {
 				echo '<div class="notice notice-success"><p>' . esc_html__( 'Encryption key detected. Tokens will be encrypted at rest.', 'bb-hubspot-forms' ) . '</p></div>';
 			} else {
-				echo '<div class="notice notice-warning"><p>' . esc_html__( 'Encryption key missing. Tokens cannot be saved until configured.', 'bb-hubspot-forms' ) . '</p>';
-				echo '<p><code>define( \'BB_HUBSPOT_ENCRYPTION_KEY\', \'put-a-long-random-string-here\' );</code></p></div>';
+				echo '<div class="notice notice-warning">';
+				echo '<p><strong>' . esc_html__( 'Security setup required (one-time)', 'bb-hubspot-forms' ) . '</strong></p>';
+				echo '<p>' . esc_html__( 'For security, HubSpot API tokens are encrypted before being stored.', 'bb-hubspot-forms' ) . '</p>';
+				echo '<p>' . esc_html__( 'This prevents database leaks or backups from exposing sensitive credentials.', 'bb-hubspot-forms' ) . '</p>';
+				echo '<p>' . esc_html__( 'A site administrator needs to add an encryption key to your WordPress configuration.', 'bb-hubspot-forms' ) . '</p>';
+				echo '<p>' . esc_html__( 'If you’re not a developer: Send this message to your technical team or hosting provider.', 'bb-hubspot-forms' ) . '</p>';
+				echo '<p><code>define( \'BB_HUBSPOT_ENCRYPTION_KEY\', \'generate-a-long-random-secret-key-here\' );</code></p>';
+				echo '<p>' . esc_html__( 'After this is done, return here to save your HubSpot token.', 'bb-hubspot-forms' ) . '</p>';
+				echo '</div>';
 			}
 
 			settings_errors( 'bb_hubspot_forms_settings_group' );
@@ -334,6 +407,10 @@ final class SettingsPage {
 
 		if ( $key === 'private_token' ) {
 			$value = '';
+			$stored = Settings::get_raw( 'private_token' );
+			if ( $stored !== '' ) {
+				$placeholder = __( 'Token saved — enter a new token to replace', 'bb-hubspot-forms' );
+			}
 		}
 		printf(
 			'<input type="%1$s" class="regular-text %2$s" name="%3$s[%4$s]" value="%5$s" placeholder="%6$s" autocomplete="off" />',
@@ -348,12 +425,13 @@ final class SettingsPage {
 			printf( '<p class="description">%s</p>', esc_html( $description ) );
 		}
 		if ( $note ) {
-			printf( '<p class="description"><em>%s</em></p>', esc_html( $note ) );
+			$note_class = $key === 'private_token' ? 'bb-hubspot-forms-token-note' : '';
+			printf( '<p class="description %1$s"><em>%2$s</em></p>', esc_attr( $note_class ), esc_html( $note ) );
 		}
 		if ( $key === 'private_token' ) {
 			$stored = Settings::get_raw( 'private_token' );
 			if ( $stored !== '' ) {
-				printf( '<p class="description">%s</p>', esc_html__( 'A token is currently saved.', 'bb-hubspot-forms' ) );
+				printf( '<p class="bb-hubspot-forms-token-status">%s</p>', esc_html__( 'A token is currently saved.', 'bb-hubspot-forms' ) );
 				if ( Settings::has_encryption_key() && ! Settings::is_encrypted_value( $stored ) ) {
 					printf( '<p class="description">%s</p>', esc_html__( 'Saved token is not encrypted yet. Save settings to upgrade encryption.', 'bb-hubspot-forms' ) );
 				}
@@ -364,33 +442,18 @@ final class SettingsPage {
 	public static function render_textarea_field( array $args ): void {
 		$key         = $args['key'];
 		$options     = get_option( Settings::OPTION_KEY, array() );
-		$value       = isset( $options[ $key ] ) ? $options[ $key ] : array();
+		$value       = isset( $options[ $key ] ) ? $options[ $key ] : '';
 		$placeholder = isset( $args['placeholder'] ) ? $args['placeholder'] : '';
 		$description = isset( $args['description'] ) ? $args['description'] : '';
 		$input_class = isset( $args['input_class'] ) ? $args['input_class'] : '';
-		$lines       = array();
-
-		if ( is_array( $value ) ) {
-			foreach ( $value as $entry ) {
-				if ( is_array( $entry ) ) {
-					$id    = isset( $entry['id'] ) ? $entry['id'] : '';
-					$label = isset( $entry['label'] ) ? $entry['label'] : '';
-					if ( $id ) {
-						$lines[] = ( $label && $label !== $id ) ? $label . ' | ' . $id : $id;
-					}
-				} elseif ( is_string( $entry ) && $entry !== '' ) {
-					$lines[] = $entry;
-				}
-			}
-		}
 
 		printf(
-			'<textarea class="large-text %1$s" rows="6" name="%2$s[%3$s]" placeholder="%4$s">%5$s</textarea>',
+			'<textarea class="large-text %1$s" rows="4" name="%2$s[%3$s]" placeholder="%4$s">%5$s</textarea>',
 			esc_attr( $input_class ),
 			esc_attr( Settings::OPTION_KEY ),
 			esc_attr( $key ),
 			esc_attr( $placeholder ),
-			esc_textarea( implode( "\n", $lines ) )
+			esc_textarea( is_string( $value ) ? $value : '' )
 		);
 		if ( $description ) {
 			printf( '<p class="description">%s</p>', esc_html( $description ) );
@@ -468,9 +531,26 @@ final class SettingsPage {
 	public static function render_form_usage_notes(): void {
 		?>
 		<div>
-			<p><?php esc_html_e( 'Each HubSpot form used on your site requires a Form ID.', 'bb-hubspot-forms' ); ?></p>
-			<p><?php esc_html_e( 'Form IDs are configured per form in the WordPress admin and selected from the list above.', 'bb-hubspot-forms' ); ?></p>
-			<p><?php esc_html_e( 'You can find the Form ID in HubSpot under Marketing -> Forms -> Embed options.', 'bb-hubspot-forms' ); ?></p>
+			<p><?php esc_html_e( 'Forms are fetched directly from your HubSpot account using the Private App Token.', 'bb-hubspot-forms' ); ?></p>
+			<p><?php esc_html_e( 'When creating a HubSpot Form post, select a form from the dropdown and click "Sync fields from HubSpot".', 'bb-hubspot-forms' ); ?></p>
+			<p><?php esc_html_e( 'Use the generated shortcode to embed the form on any page or post.', 'bb-hubspot-forms' ); ?></p>
+		</div>
+		<?php
+	}
+
+	public static function render_appearance_notes(): void {
+		?>
+		<div>
+			<p><?php esc_html_e( 'When enabled, the plugin applies clean, modern styling to form elements including inputs, labels, buttons, and validation messages.', 'bb-hubspot-forms' ); ?></p>
+			<p><?php esc_html_e( 'Disable this option if you want to use your theme\'s styles or write custom CSS. All form elements use BEM-style classes prefixed with "bb-hubspot-forms-form".', 'bb-hubspot-forms' ); ?></p>
+			<p><strong><?php esc_html_e( 'Available CSS classes:', 'bb-hubspot-forms' ); ?></strong></p>
+			<ul style="margin-left: 1.5em; list-style: disc;">
+				<li><code>.bb-hubspot-forms-form</code> — <?php esc_html_e( 'Form container', 'bb-hubspot-forms' ); ?></li>
+				<li><code>.bb-hubspot-forms-form__field</code> — <?php esc_html_e( 'Field wrapper', 'bb-hubspot-forms' ); ?></li>
+				<li><code>.bb-hubspot-forms-form__label</code> — <?php esc_html_e( 'Field label', 'bb-hubspot-forms' ); ?></li>
+				<li><code>.bb-hubspot-forms-form__option</code> — <?php esc_html_e( 'Checkbox/radio option wrapper', 'bb-hubspot-forms' ); ?></li>
+				<li><code>.bb-hubspot-forms-form__message</code> — <?php esc_html_e( 'Success/error message area', 'bb-hubspot-forms' ); ?></li>
+			</ul>
 		</div>
 		<?php
 	}
@@ -535,54 +615,16 @@ final class SettingsPage {
 		$output['captcha_expected_action'] = $expected_action ? $expected_action : 'hubspot_form_submit';
 		$output['captcha_site_key']   = isset( $input['captcha_site_key'] ) ? sanitize_text_field( $input['captcha_site_key'] ) : '';
 		$output['captcha_secret_key'] = isset( $input['captcha_secret_key'] ) ? sanitize_text_field( $input['captcha_secret_key'] ) : '';
-		$output['form_ids']           = self::sanitize_form_ids( $input['form_ids'] ?? '' );
+		$output['consent_enabled']    = ! empty( $input['consent_enabled'] );
+		$output['consent_text']       = isset( $input['consent_text'] ) ? sanitize_textarea_field( $input['consent_text'] ) : '';
+		$output['marketing_enabled']  = ! empty( $input['marketing_enabled'] );
+		$output['marketing_text']     = isset( $input['marketing_text'] ) ? sanitize_textarea_field( $input['marketing_text'] ) : '';
+		$output['subscription_type_id']   = isset( $input['subscription_type_id'] ) ? absint( $input['subscription_type_id'] ) : 0;
+		$output['enable_default_styles']  = ! empty( $input['enable_default_styles'] );
+		$output['debug_enabled']          = ! empty( $input['debug_enabled'] );
 
 		return $output;
 	}
 
-	private static function sanitize_form_ids( $raw ): array {
-		if ( ! is_string( $raw ) ) {
-			return array();
-		}
-
-		$lines   = preg_split( '/\r\n|\r|\n/', $raw );
-		$entries = array();
-
-		foreach ( $lines as $line ) {
-			$line = trim( $line );
-			if ( $line === '' ) {
-				continue;
-			}
-
-			$label = '';
-			$id    = '';
-
-			if ( strpos( $line, '|' ) !== false ) {
-				$parts = array_map( 'trim', explode( '|', $line, 2 ) );
-				$label = $parts[0] ?? '';
-				$id    = $parts[1] ?? '';
-			} else {
-				$id = $line;
-			}
-
-			$id    = sanitize_text_field( $id );
-			$label = sanitize_text_field( $label );
-
-			if ( $id === '' ) {
-				continue;
-			}
-
-			if ( $label === '' ) {
-				$label = $id;
-			}
-
-			$entries[] = array(
-				'id'    => $id,
-				'label' => $label,
-			);
-		}
-
-		return $entries;
-	}
 }
 

@@ -4,12 +4,23 @@
 		return;
 	}
 
+	/**
+	 * Get CAPTCHA token if configured.
+	 */
 	const getCaptchaToken = async () => {
 		const provider = window.bbHubspotFormsConfig?.captchaProvider;
 		const siteKey = window.bbHubspotFormsConfig?.captchaSiteKey;
 		const action = window.bbHubspotFormsConfig?.captchaAction || 'hubspot_form_submit';
 
-		if (provider !== 'recaptcha_v3' || !siteKey || !window.grecaptcha?.ready) {
+		console.log('BB HubSpot Forms: CAPTCHA config', { provider, siteKey: siteKey ? siteKey.substring(0, 10) + '...' : 'none', action });
+
+		if (provider !== 'recaptcha_v3' || !siteKey) {
+			console.log('BB HubSpot Forms: CAPTCHA skipped (not configured)');
+			return { token: '', action: '' };
+		}
+
+		if (!window.grecaptcha) {
+			console.log('BB HubSpot Forms: grecaptcha not loaded!');
 			return { token: '', action: '' };
 		}
 
@@ -17,21 +28,193 @@
 			return await new Promise((resolve) => {
 				window.grecaptcha.ready(async () => {
 					try {
+						console.log('BB HubSpot Forms: Executing reCAPTCHA...');
 						const token = await window.grecaptcha.execute(siteKey, { action });
+						console.log('BB HubSpot Forms: Got token', token ? token.substring(0, 20) + '...' : 'empty');
 						resolve({ token, action });
 					} catch (error) {
+						console.error('BB HubSpot Forms: reCAPTCHA execute error', error);
 						resolve({ token: '', action: '' });
 					}
 				});
 			});
 		} catch (error) {
+			console.error('BB HubSpot Forms: reCAPTCHA error', error);
 			return { token: '', action: '' };
 		}
 	};
 
-	const submitForm = async (form) => {
+	/**
+	 * Clear all field errors.
+	 */
+	const clearFieldErrors = (form) => {
+		form.querySelectorAll('.bb-hubspot-forms-form__field').forEach((field) => {
+			field.classList.remove('bb-hubspot-forms-form__field--error');
+			const errorEl = field.querySelector('.bb-hubspot-forms-form__field-error');
+			if (errorEl) {
+				errorEl.remove();
+			}
+		});
+	};
+
+	/**
+	 * Show error on a specific field.
+	 */
+	const showFieldError = (input, message) => {
+		const fieldWrapper = input.closest('.bb-hubspot-forms-form__field');
+		if (!fieldWrapper) return;
+
+		fieldWrapper.classList.add('bb-hubspot-forms-form__field--error');
+
+		// Remove existing error if present.
+		const existingError = fieldWrapper.querySelector('.bb-hubspot-forms-form__field-error');
+		if (existingError) {
+			existingError.remove();
+		}
+
+		// Add new error message.
+		const errorEl = document.createElement('span');
+		errorEl.className = 'bb-hubspot-forms-form__field-error';
+		errorEl.setAttribute('role', 'alert');
+		errorEl.textContent = message;
+		fieldWrapper.appendChild(errorEl);
+	};
+
+	/**
+	 * Validate required fields.
+	 * Returns first invalid input or null if all valid.
+	 */
+	const validateRequired = (form) => {
+		const requiredInputs = form.querySelectorAll('[required]');
+		let firstInvalid = null;
+
+		requiredInputs.forEach((input) => {
+			const value = input.type === 'checkbox' ? input.checked : input.value.trim();
+			if (!value) {
+				const label = input.closest('.bb-hubspot-forms-form__field')?.querySelector('.bb-hubspot-forms-form__label')?.textContent || 'This field';
+				showFieldError(input, `${label} is required.`);
+				if (!firstInvalid) {
+					firstInvalid = input;
+				}
+			}
+		});
+
+		return firstInvalid;
+	};
+
+	/**
+	 * Validate email format.
+	 */
+	const validateEmail = (form) => {
+		const emailField = form.querySelector('input[type="email"]');
+		if (!emailField || !emailField.value.trim()) {
+			return null;
+		}
+
+		const emailValue = emailField.value.trim();
+		const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue);
+		if (!emailOk) {
+			showFieldError(emailField, 'Please enter a valid email address.');
+			return emailField;
+		}
+
+		return null;
+	};
+
+	/**
+	 * Set form message with appropriate styling.
+	 */
+	const setFormMessage = (form, message, type = 'info') => {
 		const messageEl = form.querySelector('.bb-hubspot-forms-form__message');
+		if (!messageEl) return;
+
+		// Remove existing type classes.
+		messageEl.classList.remove(
+			'bb-hubspot-forms-form__message--success',
+			'bb-hubspot-forms-form__message--error',
+			'bb-hubspot-forms-form__message--loading'
+		);
+
+		// Add new type class.
+		if (type) {
+			messageEl.classList.add(`bb-hubspot-forms-form__message--${type}`);
+		}
+
+		messageEl.textContent = message;
+	};
+
+	/**
+	 * Hide form fields after successful submission.
+	 */
+	const hideFormFields = (form) => {
+		// Hide all fields and submit button.
+		form.querySelectorAll('.bb-hubspot-forms-form__field, button[type="submit"]').forEach((el) => {
+			el.style.display = 'none';
+		});
+		// Add submitted class for additional styling.
+		form.classList.add('bb-hubspot-forms-form--submitted');
+	};
+
+	/**
+	 * Set loading state on form.
+	 */
+	const setLoading = (form, isLoading) => {
+		const submitBtn = form.querySelector('button[type="submit"]');
+		
+		if (isLoading) {
+			form.classList.add('bb-hubspot-forms-form--loading');
+			if (submitBtn) {
+				submitBtn.disabled = true;
+				submitBtn.setAttribute('data-original-text', submitBtn.textContent);
+				submitBtn.textContent = 'Submitting…';
+			}
+			setFormMessage(form, 'Submitting your form…', 'loading');
+		} else {
+			form.classList.remove('bb-hubspot-forms-form--loading');
+			if (submitBtn) {
+				submitBtn.disabled = false;
+				const originalText = submitBtn.getAttribute('data-original-text');
+				if (originalText) {
+					submitBtn.textContent = originalText;
+				}
+			}
+		}
+	};
+
+	/**
+	 * Handle form submission.
+	 */
+	const submitForm = async (form) => {
+		// Debug: log config.
+		console.log('BB HubSpot Forms: Submitting...', {
+			restUrl: window.bbHubspotFormsConfig?.restUrl,
+			formId: form.getAttribute('data-form-id'),
+		});
+
 		try {
+			// Clear previous errors.
+			clearFieldErrors(form);
+			setFormMessage(form, '', '');
+
+			// Validate required fields.
+			const invalidRequired = validateRequired(form);
+			if (invalidRequired) {
+				setFormMessage(form, 'Please complete all required fields.', 'error');
+				invalidRequired.focus();
+				return;
+			}
+
+			// Validate email format.
+			const invalidEmail = validateEmail(form);
+			if (invalidEmail) {
+				setFormMessage(form, 'Please correct the errors above.', 'error');
+				invalidEmail.focus();
+				return;
+			}
+
+			// Show loading state.
+			setLoading(form, true);
+
 			const formId = form.getAttribute('data-form-id');
 			const token = form.getAttribute('data-token');
 			const schemaVersion = form.getAttribute('data-schema-version');
@@ -61,42 +244,92 @@
 				captchaAction: captcha.action,
 			};
 
-			messageEl.textContent = 'Submitting...';
+		const response = await fetch(window.bbHubspotFormsConfig?.restUrl || '', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+		});
 
-			const response = await fetch(window.bbHubspotFormsConfig?.restUrl || '', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-			});
+		const data = await response.json().catch(() => ({}));
+		
+		// Log response for debugging (only in dev).
+		if (window.console && !response.ok) {
+			console.log('BB HubSpot Forms - Response:', response.status, data);
+		}
+		
+		setLoading(form, false);
 
-			const data = await response.json().catch(() => ({}));
-			if (!response.ok || !data.success) {
-				messageEl.textContent = data?.errors?.submission || 'Submission failed.';
-				return;
+		if (!response.ok || !data.success) {
+			// Extract error message from various possible locations in response.
+			let errorMessage = 'Submission failed. Please try again.';
+			if (data?.errors?.submission) {
+				errorMessage = data.errors.submission;
+			} else if (data?.message) {
+				errorMessage = data.message;
+			} else if (data?.errors && typeof data.errors === 'object') {
+				// Get first field error if present.
+				const firstError = Object.values(data.errors)[0];
+				if (firstError) {
+					errorMessage = firstError;
+				}
 			}
+			setFormMessage(form, errorMessage, 'error');
+			return;
+		}
 
-			messageEl.textContent = data.message || 'Submitted successfully.';
+			// Success!
+			const successMessage = data.message || 'Thank you! Your form has been submitted successfully.';
+			setFormMessage(form, successMessage, 'success');
+			form.reset();
+
+			// Hide form fields and show only success message.
+			hideFormFields(form);
+
+			// Handle redirect if configured.
 			if (redirectUrl) {
 				let url = redirectUrl;
 				if (appendEmail && fields.email) {
 					const separator = url.includes('?') ? '&' : '?';
 					url = `${url}${separator}email=${encodeURIComponent(fields.email)}`;
 				}
-				window.location.href = url;
+				setTimeout(() => {
+					window.location.href = url;
+				}, 1000);
 			}
 		} catch (error) {
-			messageEl.textContent = 'Unable to submit form. Please try again.';
+			setLoading(form, false);
+			setFormMessage(form, 'Unable to submit form. Please check your connection and try again.', 'error');
 			if (window.console && console.error) {
 				console.error('BB HubSpot Forms:', error);
 			}
 		}
 	};
 
+	/**
+	 * Clear field error on input.
+	 */
+	const setupFieldListeners = (form) => {
+		const inputs = form.querySelectorAll('input, textarea, select');
+		inputs.forEach((input) => {
+			input.addEventListener('input', () => {
+				const fieldWrapper = input.closest('.bb-hubspot-forms-form__field');
+				if (fieldWrapper) {
+					fieldWrapper.classList.remove('bb-hubspot-forms-form__field--error');
+					const errorEl = fieldWrapper.querySelector('.bb-hubspot-forms-form__field-error');
+					if (errorEl) {
+						errorEl.remove();
+					}
+				}
+			});
+		});
+	};
+
+	// Initialize all forms.
 	forms.forEach((form) => {
+		setupFieldListeners(form);
 		form.addEventListener('submit', (event) => {
 			event.preventDefault();
 			submitForm(form);
 		});
 	});
 })();
-

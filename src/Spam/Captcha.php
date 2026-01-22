@@ -38,45 +38,70 @@ final class Captcha {
 		);
 
 		if ( is_wp_error( $response ) ) {
+			self::log_failure( 'reCAPTCHA connection error: ' . $response->get_error_message() );
 			return false;
 		}
 
 		$status = wp_remote_retrieve_response_code( $response );
 		if ( $status !== 200 ) {
+			self::log_failure( 'reCAPTCHA API returned status: ' . $status );
 			return false;
 		}
 
 		$body = wp_remote_retrieve_body( $response );
 		$data = json_decode( $body, true );
 		if ( ! is_array( $data ) ) {
+			self::log_failure( 'reCAPTCHA invalid response body' );
 			return false;
 		}
 
 		if ( empty( $data['success'] ) ) {
+			$errors = isset( $data['error-codes'] ) ? implode( ', ', $data['error-codes'] ) : 'unknown';
+			self::log_failure( 'reCAPTCHA failed: ' . $errors );
 			return false;
 		}
 
 		$min_score = isset( $options['min_score'] ) ? (float) $options['min_score'] : 0.5;
 		if ( isset( $data['score'] ) && (float) $data['score'] < $min_score ) {
+			self::log_failure( 'reCAPTCHA score too low: ' . $data['score'] . ' < ' . $min_score );
 			return false;
 		}
 
 		if ( ! empty( $options['expected_action'] ) ) {
 			$expected_action = (string) $options['expected_action'];
 			if ( empty( $data['action'] ) || $data['action'] !== $expected_action ) {
+				self::log_failure( 'reCAPTCHA action mismatch: expected ' . $expected_action . ', got ' . ( $data['action'] ?? 'none' ) );
 				return false;
 			}
 		}
 
-		if ( ! empty( $options['expected_hostname'] ) ) {
-			$allowed = is_array( $options['expected_hostname'] ) ? $options['expected_hostname'] : array( $options['expected_hostname'] );
-			$allowed = array_filter( array_map( 'strval', $allowed ) );
-			if ( empty( $data['hostname'] ) || ! in_array( $data['hostname'], $allowed, true ) ) {
-				return false;
+		// Skip hostname verification for local development domains.
+		if ( ! empty( $options['expected_hostname'] ) && ! empty( $data['hostname'] ) ) {
+			$response_hostname = $data['hostname'];
+			// Allow local dev domains (localhost, .local, .test, .dev).
+			$is_local = preg_match( '/^(localhost|127\.0\.0\.1|.*\.(local|test|dev|localhost))$/i', $response_hostname );
+			if ( ! $is_local ) {
+				$allowed = is_array( $options['expected_hostname'] ) ? $options['expected_hostname'] : array( $options['expected_hostname'] );
+				$allowed = array_filter( array_map( 'strval', $allowed ) );
+				if ( ! in_array( $response_hostname, $allowed, true ) ) {
+					self::log_failure( 'reCAPTCHA hostname mismatch: ' . $response_hostname . ' not in allowed list' );
+					return false;
+				}
 			}
 		}
 
 		return true;
+	}
+
+	/**
+	 * Log captcha failure for debugging.
+	 *
+	 * @param string $message Failure message.
+	 */
+	private static function log_failure( string $message ): void {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( '[bb-hubspot-forms] Captcha: ' . $message );
+		}
 	}
 
 	private static function verify_turnstile( string $secret, string $token, string $remote_ip ): bool {

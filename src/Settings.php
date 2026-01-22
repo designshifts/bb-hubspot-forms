@@ -34,39 +34,6 @@ final class Settings {
 		return $options[ $key ];
 	}
 
-	public static function get_form_ids(): array {
-		$value = self::get( 'form_ids', array() );
-		if ( ! is_array( $value ) ) {
-			return array();
-		}
-
-		$form_ids = array();
-		foreach ( $value as $entry ) {
-			if ( is_array( $entry ) ) {
-				$id    = isset( $entry['id'] ) ? sanitize_text_field( $entry['id'] ) : '';
-				$label = isset( $entry['label'] ) ? sanitize_text_field( $entry['label'] ) : '';
-			} else {
-				$id    = is_string( $entry ) ? sanitize_text_field( $entry ) : '';
-				$label = $id;
-			}
-
-			if ( $id === '' ) {
-				continue;
-			}
-
-			if ( $label === '' ) {
-				$label = $id;
-			}
-
-			$form_ids[] = array(
-				'id'    => $id,
-				'label' => $label,
-			);
-		}
-
-		return $form_ids;
-	}
-
 	private static function get_constants(): array {
 		return array(
 			'portal_id'           => defined( 'BBHUBSPOT_FORMS_PORTAL_ID' ) ? BBHUBSPOT_FORMS_PORTAL_ID : null,
