@@ -3,7 +3,7 @@
  * Plugin Name: BB HubSpot Forms
  * Plugin URI: https://betterbuilds.app
  * Description: Security-first HubSpot forms for WordPress.
- * Version: 0.1.0
+ * Version: 1.0.0
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: Better Builds
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BBHUBSPOT_FORMS_VERSION', '0.1.0' );
+define( 'BBHUBSPOT_FORMS_VERSION', '1.0.0' );
 define( 'BBHUBSPOT_FORMS_PLUGIN_FILE', __FILE__ );
 define( 'BBHUBSPOT_FORMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BBHUBSPOT_FORMS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -33,6 +33,7 @@ register_deactivation_hook( __FILE__, 'bb_hubspot_forms_deactivate' );
 add_action(
 	'plugins_loaded',
 	static function () {
+		load_plugin_textdomain( 'bb-hubspot-forms', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 		\BBHubspotForms\Plugin::init();
 	}
 );

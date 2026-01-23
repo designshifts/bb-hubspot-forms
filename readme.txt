@@ -4,14 +4,15 @@ Tags: hubspot, forms, marketing, leads
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 0.1.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Security-first HubSpot forms for WordPress.
+Security-first HubSpot forms for WordPress, with native markup and server-side submission (no iframes).
 
 == Description ==
 BB HubSpot Forms provides a secure, CPT-backed form system that submits to HubSpot from your WordPress site.
+It uses native WordPress markup (no iframes or embed scripts) and submits server-side.
 
 Features:
 * CPT-backed form library
@@ -44,9 +45,14 @@ No. This plugin uses HubSpot Private App access tokens (pat-...). OAuth or MCP A
 = Does it encrypt the token in the database? =
 Yes, when you define `BB_HUBSPOT_ENCRYPTION_KEY` in `wp-config.php`, the token is stored encrypted at rest.
 
+== Privacy ==
+This plugin sends form submissions to HubSpot.
+If CAPTCHA is enabled, verification may send data to the CAPTCHA provider.
+The site owner controls all configuration and can disable CAPTCHA.
+
 == Screenshots ==
 1. Settings page
 
 == Changelog ==
-= 0.1.0 =
+= 1.0.0 =
 * Initial release.
