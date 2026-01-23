@@ -19,6 +19,16 @@ Features:
 * Server-side submission to HubSpot
 * Private App token authentication (no OAuth required)
 
+Settings overview:
+* HubSpot Portal ID and Private App Access Token
+* Test HubSpot Connection button
+* CAPTCHA (reCAPTCHA v3, Turnstile, hCaptcha, or disabled)
+* Form IDs list (used as dropdown per form)
+
+Secure token storage:
+Define an encryption key in `wp-config.php` to enable encrypted storage of the HubSpot Private App token:
+`define( 'BB_HUBSPOT_ENCRYPTION_KEY', 'put-a-long-random-string-here' );`
+
 == Installation ==
 1. Upload the plugin files to `/wp-content/plugins/bb-hubspot-forms`, or install via WordPress.
 2. Activate the plugin.
@@ -30,6 +40,9 @@ Yes. Use your private app token in the settings page.
 
 = Do I need MCP Auth Apps or OAuth? =
 No. This plugin uses HubSpot Private App access tokens (pat-...). OAuth or MCP Auth Apps are not required.
+
+= Does it encrypt the token in the database? =
+Yes, when you define `BB_HUBSPOT_ENCRYPTION_KEY` in `wp-config.php`, the token is stored encrypted at rest.
 
 == Screenshots ==
 1. Settings page

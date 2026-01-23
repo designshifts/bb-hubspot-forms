@@ -81,11 +81,11 @@ final class Captcha {
 			// Allow local dev domains (localhost, .local, .test, .dev).
 			$is_local = preg_match( '/^(localhost|127\.0\.0\.1|.*\.(local|test|dev|localhost))$/i', $response_hostname );
 			if ( ! $is_local ) {
-				$allowed = is_array( $options['expected_hostname'] ) ? $options['expected_hostname'] : array( $options['expected_hostname'] );
-				$allowed = array_filter( array_map( 'strval', $allowed ) );
+			$allowed = is_array( $options['expected_hostname'] ) ? $options['expected_hostname'] : array( $options['expected_hostname'] );
+			$allowed = array_filter( array_map( 'strval', $allowed ) );
 				if ( ! in_array( $response_hostname, $allowed, true ) ) {
 					self::log_failure( 'reCAPTCHA hostname mismatch: ' . $response_hostname . ' not in allowed list' );
-					return false;
+				return false;
 				}
 			}
 		}

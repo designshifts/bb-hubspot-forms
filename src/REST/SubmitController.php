@@ -129,9 +129,9 @@ final class SubmitController {
 				$captcha_token,
 				$ip,
 				array(
-					'expected_action'   => $expected_action,
-					'min_score'         => $min_score,
-					'expected_hostname' => $host_whitelist,
+				'expected_action'   => $expected_action,
+				'min_score'         => $min_score,
+				'expected_hostname' => $host_whitelist,
 				)
 			) ) {
 				Logger::log( 'Captcha verification failed.', array( 'form_id' => $form_id ) );
@@ -285,6 +285,7 @@ final class SubmitController {
 	private static function validate_fields( array $schema_map, array $fields ): array {
 		$errors        = array();
 		$block_domains = apply_filters( 'bb_hubspot_forms_block_email_domains', false );
+		$can_block     = $block_domains && class_exists( '\BBHubspotForms\Spam\DomainBlocker' );
 
 		foreach ( $schema_map as $name => $field_def ) {
 			$type     = isset( $field_def['type'] ) ? $field_def['type'] : 'text';
@@ -305,7 +306,7 @@ final class SubmitController {
 					$errors[ $name ] = 'Please enter a valid email address.';
 					continue;
 				}
-				if ( $block_domains && DomainBlocker::is_blocked( $value ) ) {
+				if ( $can_block && DomainBlocker::is_blocked( $value ) ) {
 					$errors[ $name ] = 'Please enter a business email address.';
 				}
 			}
@@ -379,13 +380,13 @@ final class SubmitController {
 		// 3. Subscription Type ID exists.
 		if ( $marketing && $user_marketing_consent && $subscription_id > 0 ) {
 			$payload['consent']['communications'] = array(
-				array(
-					'value'              => true,
-					'subscriptionTypeId' => $subscription_id,
-					'text'               => $marketing_text,
-				),
-			);
-		}
+					array(
+						'value'              => true,
+						'subscriptionTypeId' => $subscription_id,
+						'text'               => $marketing_text,
+			),
+		);
+	}
 
 		return $payload;
 	}

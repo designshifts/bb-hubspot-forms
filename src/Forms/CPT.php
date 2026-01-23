@@ -71,7 +71,7 @@ final class CPT {
 			'_bbhs_form_guid',
 			array(
 				'type'              => 'string',
-				'single'            => true,
+			'single'            => true,
 				'show_in_rest'      => true,
 				'auth_callback'     => function () {
 					return current_user_can( 'edit_posts' );
@@ -89,7 +89,7 @@ final class CPT {
 				'type'          => 'object',
 				'single'        => true,
 				'show_in_rest'  => array(
-					'schema' => array(
+				'schema' => array(
 						'type'                 => 'object',
 						'additionalProperties' => true,
 						'properties'           => array(
@@ -108,7 +108,7 @@ final class CPT {
 										'type'     => array( 'type' => 'string' ),
 										'required' => array( 'type' => 'boolean' ),
 										'options'  => array(
-											'type'  => 'array',
+							'type'  => 'array',
 											'items' => array( 'type' => 'string' ),
 										),
 									),
@@ -118,8 +118,8 @@ final class CPT {
 					),
 				),
 				'auth_callback' => function () {
-					return current_user_can( 'edit_posts' );
-				},
+				return current_user_can( 'edit_posts' );
+			},
 				'default'       => array(),
 			)
 		);

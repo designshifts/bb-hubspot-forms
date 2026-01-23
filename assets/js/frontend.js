@@ -319,17 +319,17 @@
 				captchaAction: captcha.action,
 			};
 
-		const response = await fetch(window.bbHubspotFormsConfig?.restUrl || '', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload),
-		});
+			const response = await fetch(window.bbHubspotFormsConfig?.restUrl || '', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
 
-		const data = await response.json().catch(() => ({}));
+			const data = await response.json().catch(() => ({}));
 		
 		setLoading(form, false);
 
-		if (!response.ok || !data.success) {
+			if (!response.ok || !data.success) {
 			// Extract error message from various possible locations in response.
 			let errorMessage = 'Submission failed. Please try again.';
 			if (data?.errors?.submission) {
@@ -344,8 +344,8 @@
 				}
 			}
 			setFormMessage(form, errorMessage, 'error');
-			return;
-		}
+				return;
+			}
 
 			// Success!
 			const successMessage = data.message || 'Thank you! Your form has been submitted successfully.';
@@ -363,7 +363,7 @@
 					url = `${url}${separator}email=${encodeURIComponent(fields.email)}`;
 				}
 				setTimeout(() => {
-					window.location.href = url;
+				window.location.href = url;
 				}, 1000);
 			}
 		} catch (error) {

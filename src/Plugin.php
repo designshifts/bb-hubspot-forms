@@ -30,7 +30,6 @@ final class Plugin {
 		require_once BBHUBSPOT_FORMS_PLUGIN_DIR . 'src/HubSpot/Client.php';
 		require_once BBHUBSPOT_FORMS_PLUGIN_DIR . 'src/HubSpot/SchemaMapper.php';
 		require_once BBHUBSPOT_FORMS_PLUGIN_DIR . 'src/Logger.php';
-		require_once BBHUBSPOT_FORMS_PLUGIN_DIR . 'src/Spam/DomainBlocker.php';
 		require_once BBHUBSPOT_FORMS_PLUGIN_DIR . 'src/Spam/Captcha.php';
 	}
 
