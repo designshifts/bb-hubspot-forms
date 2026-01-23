@@ -236,8 +236,13 @@ final class SubmitController {
 			$context['hutk'] = sanitize_text_field( wp_unslash( $_COOKIE['hubspotutk'] ) );
 		}
 
-		// Build consent payload from global settings.
-		$consent = self::build_consent_payload();
+		// Get user consent values from request.
+		$user_consent = isset( $params['consent'] ) && is_array( $params['consent'] ) ? $params['consent'] : array();
+		$user_consent_to_process = ! empty( $user_consent['consentToProcess'] );
+		$user_marketing_consent  = ! empty( $user_consent['marketingConsent'] );
+
+		// Build consent payload from settings + user input.
+		$consent = self::build_consent_payload( $user_consent_to_process, $user_marketing_consent );
 
 		$payload = array(
 			'fields'  => $payload_fields,
@@ -337,29 +342,42 @@ final class SubmitController {
 	}
 
 	/**
-	 * Build consent payload from global settings.
+	 * Build consent payload from settings + user input.
 	 *
+	 * @param bool $user_consent_to_process User checked data processing consent.
+	 * @param bool $user_marketing_consent  User checked marketing consent.
 	 * @return array
 	 */
-	private static function build_consent_payload(): array {
-		$enabled         = Settings::get( 'consent_enabled', false );
+	private static function build_consent_payload( bool $user_consent_to_process, bool $user_marketing_consent ): array {
+		$consent_mode    = Settings::get( 'consent_mode', 'always' );
 		$consent_text    = Settings::get( 'consent_text', '' );
 		$marketing       = Settings::get( 'marketing_enabled', false );
 		$marketing_text  = Settings::get( 'marketing_text', '' );
 		$subscription_id = (int) Settings::get( 'subscription_type_id', 0 );
 
-		if ( ! $enabled || '' === $consent_text ) {
+		// If consent mode is disabled, don't send consent payload.
+		if ( 'disabled' === $consent_mode ) {
 			return array();
 		}
 
+		// Default consent text if not set.
+		if ( empty( $consent_text ) ) {
+			$consent_text = __( 'I agree to allow this website to store and process my personal data.', 'bb-hubspot-forms' );
+		}
+
+		// Build base consent payload.
 		$payload = array(
 			'consent' => array(
-				'consentToProcess' => true,
+				'consentToProcess' => $user_consent_to_process,
 				'text'             => $consent_text,
 			),
 		);
 
-		if ( $marketing && $subscription_id ) {
+		// Only add marketing consent if:
+		// 1. Marketing is enabled in settings
+		// 2. User actually checked the marketing box
+		// 3. Subscription Type ID exists.
+		if ( $marketing && $user_marketing_consent && $subscription_id > 0 ) {
 			$payload['consent']['communications'] = array(
 				array(
 					'value'              => true,

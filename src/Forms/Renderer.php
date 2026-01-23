@@ -124,13 +124,20 @@ final class Renderer {
 			wp_enqueue_style( 'bb-hubspot-forms-frontend' );
 		}
 
+		// Get consent settings.
+		$consent_mode = Settings::get( 'consent_mode', 'always' );
+		$user_country = self::get_user_country();
+
 		$form_attrs = array(
 			'data-form-id'        => (string) $form_id,
 			'data-schema-version' => esc_attr( $version ),
 			'data-token'          => esc_attr( $token ),
+			'data-consent-mode'   => esc_attr( $consent_mode ),
+			'data-user-country'   => esc_attr( $user_country ),
 		);
 
-		$fields_html = self::render_fields( $schema['fields'], $overrides );
+		$fields_html  = self::render_fields( $schema['fields'], $overrides );
+		$consent_html = self::render_consent_block( $consent_mode );
 
 		$attributes = '';
 		foreach ( $form_attrs as $key => $value ) {
@@ -141,11 +148,78 @@ final class Renderer {
 		}
 
 		return sprintf(
-			'<form class="bb-hubspot-forms-form" method="post" novalidate%1$s>%2$s<button type="submit">%3$s</button><div class="bb-hubspot-forms-form__message" aria-live="polite"></div></form>',
+			'<form class="bb-hubspot-forms-form" method="post" novalidate%1$s>%2$s%3$s<button type="submit">%4$s</button><div class="bb-hubspot-forms-form__message" aria-live="polite"></div></form>',
 			$attributes,
 			$fields_html,
+			$consent_html,
 			esc_html__( 'Submit', 'bb-hubspot-forms' )
 		);
+	}
+
+	/**
+	 * Render consent block.
+	 *
+	 * @param string $consent_mode Consent mode (always, eu_only, disabled).
+	 * @return string
+	 */
+	private static function render_consent_block( string $consent_mode ): string {
+		// Don't render if consent is disabled.
+		if ( 'disabled' === $consent_mode ) {
+			return '';
+		}
+
+		$consent_text      = Settings::get( 'consent_text', '' );
+		$marketing_enabled = Settings::get( 'marketing_enabled', false );
+		$marketing_text    = Settings::get( 'marketing_text', '' );
+
+		// Default consent text if not set.
+		if ( empty( $consent_text ) ) {
+			$consent_text = __( 'I agree to allow this website to store and process my personal data.', 'bb-hubspot-forms' );
+		}
+
+		$output = '<div class="bb-hubspot-forms-form__consent">';
+
+		// Required: Data Processing Consent.
+		$output .= '<label class="bb-hubspot-forms-form__consent-field">';
+		$output .= '<input type="checkbox" name="consent_to_process" value="1" required />';
+		$output .= '<span>' . esc_html( $consent_text ) . '</span>';
+		$output .= '</label>';
+
+		// Optional: Marketing Consent (only if enabled).
+		// Note: If no subscription ID is provided, we still show the checkbox
+		// but won't send communications[] to HubSpot.
+		if ( $marketing_enabled && ! empty( $marketing_text ) ) {
+			$output .= '<label class="bb-hubspot-forms-form__consent-field">';
+			$output .= '<input type="checkbox" name="marketing_consent" value="1" />';
+			$output .= '<span>' . esc_html( $marketing_text ) . '</span>';
+			$output .= '</label>';
+		}
+
+		$output .= '</div>';
+
+		return $output;
+	}
+
+	/**
+	 * Get user country code from headers.
+	 *
+	 * @return string Country code or empty string.
+	 */
+	private static function get_user_country(): string {
+		// Try Cloudflare header first.
+		if ( ! empty( $_SERVER['HTTP_CF_IPCOUNTRY'] ) ) {
+			return strtoupper( sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_IPCOUNTRY'] ) ) );
+		}
+
+		// Try other common geo headers.
+		$headers = array( 'HTTP_X_COUNTRY_CODE', 'GEOIP_COUNTRY_CODE', 'HTTP_X_VERCEL_IP_COUNTRY' );
+		foreach ( $headers as $header ) {
+			if ( ! empty( $_SERVER[ $header ] ) ) {
+				return strtoupper( sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) ) );
+			}
+		}
+
+		return '';
 	}
 
 	/**

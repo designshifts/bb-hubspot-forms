@@ -5,6 +5,85 @@
 	}
 
 	/**
+	 * EU/EEA/UK country codes for GDPR consent.
+	 */
+	const EU_COUNTRIES = [
+		'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU',
+		'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
+		'IS', 'LI', 'NO', 'GB', 'CH' // EEA + UK + Switzerland
+	];
+
+	/**
+	 * Check if country code is EU/UK.
+	 */
+	const isEUCountry = (countryCode) => {
+		return countryCode && EU_COUNTRIES.includes(countryCode.toUpperCase());
+	};
+
+	/**
+	 * Setup consent visibility based on mode and country.
+	 */
+	const setupConsentVisibility = (form) => {
+		const consentBlock = form.querySelector('.bb-hubspot-forms-form__consent');
+		if (!consentBlock) return;
+
+		const consentMode = form.getAttribute('data-consent-mode') || 'always';
+		const userCountry = form.getAttribute('data-user-country') || '';
+		const consentCheckbox = consentBlock.querySelector('input[name="consent_to_process"]');
+
+		if (consentMode === 'eu_only') {
+			// Only hide if we have a confirmed non-EU country.
+			if (userCountry && !isEUCountry(userCountry)) {
+				consentBlock.style.display = 'none';
+				// Auto-check consent for non-EU users.
+				if (consentCheckbox) {
+					consentCheckbox.checked = true;
+				}
+			}
+			// If no country detected, keep consent visible (safe default).
+		}
+		// For 'always' mode, consent is always visible (default).
+		// For 'disabled' mode, consent block won't be rendered at all.
+	};
+
+	/**
+	 * Validate consent checkbox if visible.
+	 */
+	const validateConsent = (form) => {
+		const consentBlock = form.querySelector('.bb-hubspot-forms-form__consent');
+		if (!consentBlock || consentBlock.style.display === 'none') {
+			return null; // No validation needed.
+		}
+
+		const consentCheckbox = consentBlock.querySelector('input[name="consent_to_process"]');
+		if (consentCheckbox && !consentCheckbox.checked) {
+			return consentCheckbox;
+		}
+
+		return null;
+	};
+
+	/**
+	 * Get consent values from form.
+	 */
+	const getConsentValues = (form) => {
+		const consentBlock = form.querySelector('.bb-hubspot-forms-form__consent');
+		const consentMode = form.getAttribute('data-consent-mode') || 'always';
+
+		if (consentMode === 'disabled' || !consentBlock) {
+			return { consentToProcess: false, marketingConsent: false };
+		}
+
+		const consentCheckbox = consentBlock.querySelector('input[name="consent_to_process"]');
+		const marketingCheckbox = consentBlock.querySelector('input[name="marketing_consent"]');
+
+		return {
+			consentToProcess: consentCheckbox ? consentCheckbox.checked : false,
+			marketingConsent: marketingCheckbox ? marketingCheckbox.checked : false,
+		};
+	};
+
+	/**
 	 * Get CAPTCHA token if configured.
 	 */
 	const getCaptchaToken = async () => {
@@ -12,15 +91,11 @@
 		const siteKey = window.bbHubspotFormsConfig?.captchaSiteKey;
 		const action = window.bbHubspotFormsConfig?.captchaAction || 'hubspot_form_submit';
 
-		console.log('BB HubSpot Forms: CAPTCHA config', { provider, siteKey: siteKey ? siteKey.substring(0, 10) + '...' : 'none', action });
-
 		if (provider !== 'recaptcha_v3' || !siteKey) {
-			console.log('BB HubSpot Forms: CAPTCHA skipped (not configured)');
 			return { token: '', action: '' };
 		}
 
 		if (!window.grecaptcha) {
-			console.log('BB HubSpot Forms: grecaptcha not loaded!');
 			return { token: '', action: '' };
 		}
 
@@ -28,18 +103,14 @@
 			return await new Promise((resolve) => {
 				window.grecaptcha.ready(async () => {
 					try {
-						console.log('BB HubSpot Forms: Executing reCAPTCHA...');
 						const token = await window.grecaptcha.execute(siteKey, { action });
-						console.log('BB HubSpot Forms: Got token', token ? token.substring(0, 20) + '...' : 'empty');
 						resolve({ token, action });
 					} catch (error) {
-						console.error('BB HubSpot Forms: reCAPTCHA execute error', error);
 						resolve({ token: '', action: '' });
 					}
 				});
 			});
 		} catch (error) {
-			console.error('BB HubSpot Forms: reCAPTCHA error', error);
 			return { token: '', action: '' };
 		}
 	};
@@ -147,8 +218,8 @@
 	 * Hide form fields after successful submission.
 	 */
 	const hideFormFields = (form) => {
-		// Hide all fields and submit button.
-		form.querySelectorAll('.bb-hubspot-forms-form__field, button[type="submit"]').forEach((el) => {
+		// Hide all fields, consent block, and submit button.
+		form.querySelectorAll('.bb-hubspot-forms-form__field, .bb-hubspot-forms-form__consent, button[type="submit"]').forEach((el) => {
 			el.style.display = 'none';
 		});
 		// Add submitted class for additional styling.
@@ -185,12 +256,6 @@
 	 * Handle form submission.
 	 */
 	const submitForm = async (form) => {
-		// Debug: log config.
-		console.log('BB HubSpot Forms: Submitting...', {
-			restUrl: window.bbHubspotFormsConfig?.restUrl,
-			formId: form.getAttribute('data-form-id'),
-		});
-
 		try {
 			// Clear previous errors.
 			clearFieldErrors(form);
@@ -212,6 +277,14 @@
 				return;
 			}
 
+			// Validate consent checkbox if visible.
+			const invalidConsent = validateConsent(form);
+			if (invalidConsent) {
+				setFormMessage(form, 'Please confirm consent before submitting.', 'error');
+				invalidConsent.focus();
+				return;
+			}
+
 			// Show loading state.
 			setLoading(form, true);
 
@@ -228,6 +301,7 @@
 			});
 
 			const captcha = await getCaptchaToken();
+			const consent = getConsentValues(form);
 
 			const payload = {
 				formId: formId,
@@ -238,6 +312,7 @@
 					pageUri: window.location.href,
 					pageName: document.title,
 				},
+				consent: consent,
 				redirectUrl: redirectUrl,
 				appendEmailToRedirect: appendEmail,
 				captchaToken: captcha.token,
@@ -251,11 +326,6 @@
 		});
 
 		const data = await response.json().catch(() => ({}));
-		
-		// Log response for debugging (only in dev).
-		if (window.console && !response.ok) {
-			console.log('BB HubSpot Forms - Response:', response.status, data);
-		}
 		
 		setLoading(form, false);
 
@@ -326,6 +396,7 @@
 
 	// Initialize all forms.
 	forms.forEach((form) => {
+		setupConsentVisibility(form);
 		setupFieldListeners(form);
 		form.addEventListener('submit', (event) => {
 			event.preventDefault();

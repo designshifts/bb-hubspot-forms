@@ -294,6 +294,63 @@
 	font-size: 0.9375rem;
 }
 
+/* Consent Block */
+.bb-hubspot-forms-form__consent {
+	margin-top: 1.25rem;
+	margin-bottom: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid #e5e7eb;
+}
+
+.bb-hubspot-forms-form__consent-field {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+	margin-bottom: 0.75rem;
+	cursor: pointer;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: #4b5563;
+}
+
+.bb-hubspot-forms-form__consent-field:last-child {
+	margin-bottom: 0;
+}
+
+.bb-hubspot-forms-form__consent-field input[type="checkbox"] {
+	width: 1.125rem;
+	height: 1.125rem;
+	min-width: 1.125rem;
+	margin: 0;
+	margin-top: 0.125rem;
+	cursor: pointer;
+	accent-color: #2271b1;
+	flex-shrink: 0;
+}
+
+.bb-hubspot-forms-form__consent-field span {
+	flex: 1;
+}
+
+.bb-hubspot-forms-form__consent-field span a {
+	color: #2271b1;
+	text-decoration: underline;
+}
+
+.bb-hubspot-forms-form__consent-field span a:hover {
+	color: #135e96;
+}
+
+/* Consent field error state */
+.bb-hubspot-forms-form__consent-field--error {
+	color: #991b1b;
+}
+
+.bb-hubspot-forms-form__consent-field--error input[type="checkbox"] {
+	outline: 2px solid #d63638;
+	outline-offset: 2px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
 	.bb-hubspot-forms-form {

@@ -14,6 +14,7 @@
 - Advanced spam stack (Turnstile + heuristics + IP reputation hooks).
 - Submission event log and audit trail.
 - Multi-portal support (agency workflows).
+- Regional consent rules (geo provider support).
 
 ## Pro Gating Strategy
 - Feature flags checked server-side.

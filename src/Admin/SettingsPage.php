@@ -149,50 +149,56 @@ final class SettingsPage {
 
 		add_settings_section(
 			'bb_hubspot_forms_settings_consent',
-			__( 'Consent Defaults', 'bb-hubspot-forms' ),
+			__( 'GDPR Consent', 'bb-hubspot-forms' ),
 			'__return_false',
 			'bb-hubspot-forms-settings'
 		);
 
-		self::add_checkbox_field(
-			'consent_enabled',
-			__( 'Enable Consent', 'bb-hubspot-forms' ),
+		self::add_select_field(
+			'consent_mode',
+			__( 'Consent Display Mode', 'bb-hubspot-forms' ),
+			array(
+				'always'   => __( 'Show consent (recommended)', 'bb-hubspot-forms' ),
+				'disabled' => __( 'Disable consent (advanced)', 'bb-hubspot-forms' ),
+			),
+			__( 'For compliance and safety, consent checkboxes are shown by default.', 'bb-hubspot-forms' ),
 			'bb_hubspot_forms_settings_consent'
 		);
 
 		self::add_textarea_field(
 			'consent_text',
-			__( 'Consent to Process Text', 'bb-hubspot-forms' ),
+			__( 'Data Processing Consent Text', 'bb-hubspot-forms' ),
 			array(
-				'placeholder' => __( 'I agree to allow Company Name to store and process my personal data.', 'bb-hubspot-forms' ),
-				'description' => __( 'Required consent copy for HubSpot legalConsentOptions.', 'bb-hubspot-forms' ),
+				'placeholder' => __( 'I agree to allow this website to store and process my personal data.', 'bb-hubspot-forms' ),
+				'description' => __( 'This text is sent to HubSpot as the primary GDPR consent statement.', 'bb-hubspot-forms' ),
 			),
 			'bb_hubspot_forms_settings_consent'
 		);
 
 		self::add_checkbox_field(
 			'marketing_enabled',
-			__( 'Enable Marketing Consent', 'bb-hubspot-forms' ),
-			'bb_hubspot_forms_settings_consent'
+			__( 'Enable Marketing Opt-in Checkbox', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_consent',
+			__( 'Add a checkbox for users who want to receive marketing emails.', 'bb-hubspot-forms' )
 		);
 
 		self::add_textarea_field(
 			'marketing_text',
-			__( 'Marketing Text', 'bb-hubspot-forms' ),
+			__( 'Marketing Consent Text', 'bb-hubspot-forms' ),
 			array(
 				'placeholder' => __( 'I agree to receive marketing communications.', 'bb-hubspot-forms' ),
-				'description' => __( 'Marketing consent text shown to HubSpot.', 'bb-hubspot-forms' ),
+				'description' => __( 'Shown when marketing opt-in is enabled.', 'bb-hubspot-forms' ),
 			),
 			'bb_hubspot_forms_settings_consent'
 		);
 
 		self::add_text_field(
 			'subscription_type_id',
-			__( 'Subscription Type ID', 'bb-hubspot-forms' ),
+			__( 'Subscription Type ID (optional)', 'bb-hubspot-forms' ),
 			array(
 				'type'        => 'number',
-				'placeholder' => __( '466761704', 'bb-hubspot-forms' ),
-				'description' => __( 'HubSpot subscriptionTypeId required for marketing consent.', 'bb-hubspot-forms' ),
+				'placeholder' => __( 'e.g. 466761704', 'bb-hubspot-forms' ),
+				'description' => __( 'Optional. If provided, HubSpot can associate the marketing opt-in with a specific subscription category. If your HubSpot account exposes subscription type IDs, you can find them in the subscription type details page. If you can\'t find it, leave this blank — form submissions will still work correctly.', 'bb-hubspot-forms' ),
 			),
 			'bb_hubspot_forms_settings_consent'
 		);
@@ -314,14 +320,17 @@ final class SettingsPage {
 		);
 	}
 
-	private static function add_checkbox_field( string $key, string $label, string $section = 'bb_hubspot_forms_settings_main' ): void {
+	private static function add_checkbox_field( string $key, string $label, string $section = 'bb_hubspot_forms_settings_main', string $description = '' ): void {
 		add_settings_field(
 			$key,
 			$label,
 			array( __CLASS__, 'render_checkbox_field' ),
 			'bb-hubspot-forms-settings',
 			$section,
-			array( 'key' => $key )
+			array(
+				'key'         => $key,
+				'description' => $description,
+			)
 		);
 	}
 
@@ -461,15 +470,19 @@ final class SettingsPage {
 	}
 
 	public static function render_checkbox_field( array $args ): void {
-		$key     = $args['key'];
-		$options = get_option( Settings::OPTION_KEY, array() );
-		$checked = ! empty( $options[ $key ] );
+		$key         = $args['key'];
+		$description = isset( $args['description'] ) ? $args['description'] : '';
+		$options     = get_option( Settings::OPTION_KEY, array() );
+		$checked     = ! empty( $options[ $key ] );
 		printf(
 			'<label><input type="checkbox" name="%1$s[%2$s]" value="1" %3$s /></label>',
 			esc_attr( Settings::OPTION_KEY ),
 			esc_attr( $key ),
 			checked( $checked, true, false )
 		);
+		if ( $description ) {
+			printf( '<p class="description">%s</p>', esc_html( $description ) );
+		}
 	}
 
 	public static function render_select_field( array $args ): void {
@@ -615,7 +628,9 @@ final class SettingsPage {
 		$output['captcha_expected_action'] = $expected_action ? $expected_action : 'hubspot_form_submit';
 		$output['captcha_site_key']   = isset( $input['captcha_site_key'] ) ? sanitize_text_field( $input['captcha_site_key'] ) : '';
 		$output['captcha_secret_key'] = isset( $input['captcha_secret_key'] ) ? sanitize_text_field( $input['captcha_secret_key'] ) : '';
-		$output['consent_enabled']    = ! empty( $input['consent_enabled'] );
+		$consent_mode                 = isset( $input['consent_mode'] ) ? sanitize_text_field( $input['consent_mode'] ) : 'always';
+		$allowed_modes                = array( 'always', 'eu_only', 'disabled' );
+		$output['consent_mode']       = in_array( $consent_mode, $allowed_modes, true ) ? $consent_mode : 'always';
 		$output['consent_text']       = isset( $input['consent_text'] ) ? sanitize_textarea_field( $input['consent_text'] ) : '';
 		$output['marketing_enabled']  = ! empty( $input['marketing_enabled'] );
 		$output['marketing_text']     = isset( $input['marketing_text'] ) ? sanitize_textarea_field( $input['marketing_text'] ) : '';
