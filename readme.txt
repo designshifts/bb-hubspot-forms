@@ -23,8 +23,8 @@ Features:
 Settings overview:
 * HubSpot Portal ID and Private App Access Token
 * Test HubSpot Connection button
-* CAPTCHA (reCAPTCHA v3, Turnstile, hCaptcha, or disabled)
-* Form IDs list (used as dropdown per form)
+* CAPTCHA (reCAPTCHA v3 or disabled)
+* Forms are fetched directly from HubSpot and selected in the Form editor
 
 Secure token storage:
 Define an encryption key in `wp-config.php` to enable encrypted storage of the HubSpot Private App token:

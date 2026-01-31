@@ -266,6 +266,8 @@ final class SubmitController {
 			return self::field_errors( array( 'submission' => $result['error'] ), 500 );
 		}
 
+		self::post_attribution_capture( $fields, $form_id );
+
 		return new WP_REST_Response(
 			array(
 				'success' => true,
@@ -273,6 +275,92 @@ final class SubmitController {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Post attribution capture to Thinkific Ops.
+	 *
+	 * @param array $fields Form fields.
+	 * @param int   $form_id Form ID.
+	 * @return void
+	 */
+	private static function post_attribution_capture( array $fields, int $form_id ): void {
+		if ( ! defined( 'BB_TFO_ATTRIBUTION_SECRET' ) || '' === BB_TFO_ATTRIBUTION_SECRET ) {
+			Logger::log( 'Attribution capture skipped: missing BB_TFO_ATTRIBUTION_SECRET.', array( 'form_id' => $form_id ) );
+			return;
+		}
+
+		$email = '';
+		if ( isset( $fields['email'] ) && is_email( $fields['email'] ) ) {
+			$email = $fields['email'];
+		} else {
+			foreach ( $fields as $value ) {
+				if ( is_string( $value ) && is_email( $value ) ) {
+					$email = $value;
+					break;
+				}
+			}
+		}
+		if ( '' === $email ) {
+			return;
+		}
+
+		$session_key = '';
+		if ( ! empty( $_COOKIE['tcc_session_key'] ) ) {
+			$session_key = sanitize_text_field( wp_unslash( $_COOKIE['tcc_session_key'] ) );
+		}
+		if ( '' === $session_key ) {
+			return;
+		}
+
+		$context = array();
+		if ( ! empty( $_COOKIE['bb_tfo_attribution'] ) ) {
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$raw = rawurldecode( wp_unslash( $_COOKIE['bb_tfo_attribution'] ) );
+			$decoded = json_decode( $raw, true );
+			if ( is_array( $decoded ) ) {
+				$context = $decoded;
+			}
+		}
+
+		$payload = array(
+			'email'        => $email,
+			'session_key'  => $session_key,
+			'source'       => 'hubspot',
+			'source_id'    => (string) $form_id,
+			'utm_source'   => isset( $context['utm_source'] ) ? sanitize_text_field( $context['utm_source'] ) : '',
+			'utm_medium'   => isset( $context['utm_medium'] ) ? sanitize_text_field( $context['utm_medium'] ) : '',
+			'utm_campaign' => isset( $context['utm_campaign'] ) ? sanitize_text_field( $context['utm_campaign'] ) : '',
+			'utm_content'  => isset( $context['utm_content'] ) ? sanitize_text_field( $context['utm_content'] ) : '',
+			'utm_term'     => isset( $context['utm_term'] ) ? sanitize_text_field( $context['utm_term'] ) : '',
+			'landing_path' => isset( $context['landing_path'] ) ? sanitize_text_field( $context['landing_path'] ) : '',
+			'referrer'     => isset( $context['referrer'] ) ? esc_url_raw( $context['referrer'] ) : '',
+		);
+
+		$body      = wp_json_encode( $payload );
+		$signature = hash_hmac( 'sha256', $body, BB_TFO_ATTRIBUTION_SECRET );
+
+		$response = wp_remote_post(
+			rest_url( 'bb-tfo/v1/attribution/email-capture' ),
+			array(
+				'headers' => array(
+					'Content-Type'   => 'application/json',
+					'X-TCC-Signature' => $signature,
+				),
+				'body'    => $body,
+				'timeout' => 10,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			Logger::log( 'Attribution capture request failed.', array( 'error' => $response->get_error_message() ) );
+			return;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			Logger::log( 'Attribution capture rejected.', array( 'status' => $code ) );
+		}
 	}
 
 	/**

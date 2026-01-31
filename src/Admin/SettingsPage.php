@@ -11,6 +11,43 @@ final class SettingsPage {
 		add_action( 'admin_menu', array( __CLASS__, 'add_menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_header_styles' ) );
+	}
+
+	public static function enqueue_header_styles( string $hook ): void {
+		$page   = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
+		$plugin = isset( $_GET['plugin'] ) ? sanitize_key( $_GET['plugin'] ) : '';
+
+		$is_plugin_page = 'bb-hubspot-forms-settings' === $page;
+		$is_core_page   = 'bb-core' === $page && 'bb-hubspot-forms' === $plugin;
+
+		if ( ! $is_plugin_page && ! $is_core_page ) {
+			return;
+		}
+
+		$css = '
+			.bb-hsf-header{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fff;border-bottom:1px solid #dcdcde;padding:16px 20px;margin:-20px -20px 20px;}
+			.bb-hsf-header-left{flex:1;min-width:0;}
+			.bb-hsf-header h1{display:flex;align-items:center;gap:8px;margin:0;font-size:23px;font-weight:400;line-height:1.3;}
+			.bb-hsf-header-subtitle{margin:6px 0 0;color:#6b7280;font-size:13px;}
+		';
+		wp_add_inline_style( 'wp-admin', $css );
+	}
+
+	public static function render_page_header( string $title, string $icon = 'feedback', string $subtitle = '' ): void {
+		?>
+		<div class="bb-hsf-header">
+			<div class="bb-hsf-header-left">
+				<h1>
+					<span class="dashicons dashicons-<?php echo esc_attr( $icon ); ?>"></span>
+					<?php echo esc_html( $title ); ?>
+				</h1>
+				<?php if ( $subtitle ) : ?>
+					<p class="bb-hsf-header-subtitle"><?php echo esc_html( $subtitle ); ?></p>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
 	}
 
 	public static function add_menu(): void {
@@ -39,6 +76,13 @@ final class SettingsPage {
 			__( 'HubSpot Connection', 'bb-hubspot-forms' ),
 			'__return_false',
 			'bb-hubspot-forms-settings'
+		);
+
+		self::add_custom_field(
+			'encryption_status',
+			__( 'Security Status', 'bb-hubspot-forms' ),
+			array( __CLASS__, 'render_encryption_status' ),
+			'bb_hubspot_forms_settings_connection'
 		);
 
 		self::add_text_field(
@@ -94,11 +138,12 @@ final class SettingsPage {
 		self::add_select_field(
 			'captcha_provider',
 			__( 'Captcha Provider', 'bb-hubspot-forms' ),
-			array(
-				''            => __( 'None (disabled)', 'bb-hubspot-forms' ),
-				'recaptcha_v3' => __( 'reCAPTCHA v3', 'bb-hubspot-forms' ),
-				'turnstile'    => __( 'Turnstile', 'bb-hubspot-forms' ),
-				'hcaptcha'     => __( 'hCaptcha', 'bb-hubspot-forms' ),
+			apply_filters(
+				'bb_hubspot_forms_captcha_provider_options',
+				array(
+					''            => __( 'None (disabled)', 'bb-hubspot-forms' ),
+					'recaptcha_v3' => __( 'reCAPTCHA v3', 'bb-hubspot-forms' ),
+				)
 			),
 			__( 'Choose a CAPTCHA provider to help prevent spam submissions.', 'bb-hubspot-forms' ),
 			'bb_hubspot_forms_settings_captcha'
@@ -366,7 +411,7 @@ final class SettingsPage {
 		}
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'BB HubSpot Forms', 'bb-hubspot-forms' ); ?></h1>
+			<?php self::render_page_header( __( 'Settings', 'bb-hubspot-forms' ), 'feedback', __( 'HubSpot Forms', 'bb-hubspot-forms' ) ); ?>
 			<?php
 			if ( isset( $_GET['settings-updated'] ) ) {
 				add_settings_error(
@@ -375,20 +420,6 @@ final class SettingsPage {
 					__( 'Settings saved.', 'bb-hubspot-forms' ),
 					'updated'
 				);
-			}
-
-			if ( Settings::has_encryption_key() ) {
-				echo '<div class="notice notice-success"><p>' . esc_html__( 'Encryption key detected. Tokens will be encrypted at rest.', 'bb-hubspot-forms' ) . '</p></div>';
-			} else {
-				echo '<div class="notice notice-warning">';
-				echo '<p><strong>' . esc_html__( 'Security setup required (one-time)', 'bb-hubspot-forms' ) . '</strong></p>';
-				echo '<p>' . esc_html__( 'For security, HubSpot API tokens are encrypted before being stored.', 'bb-hubspot-forms' ) . '</p>';
-				echo '<p>' . esc_html__( 'This prevents database leaks or backups from exposing sensitive credentials.', 'bb-hubspot-forms' ) . '</p>';
-				echo '<p>' . esc_html__( 'A site administrator needs to add an encryption key to your WordPress configuration.', 'bb-hubspot-forms' ) . '</p>';
-				echo '<p>' . esc_html__( 'If you’re not a developer: Send this message to your technical team or hosting provider.', 'bb-hubspot-forms' ) . '</p>';
-				echo '<p><code>define( \'BB_HUBSPOT_ENCRYPTION_KEY\', \'generate-a-long-random-secret-key-here\' );</code></p>';
-				echo '<p>' . esc_html__( 'After this is done, return here to save your HubSpot token.', 'bb-hubspot-forms' ) . '</p>';
-				echo '</div>';
 			}
 
 			settings_errors( 'bb_hubspot_forms_settings_group' );
@@ -541,6 +572,23 @@ final class SettingsPage {
 		<?php
 	}
 
+	public static function render_encryption_status(): void {
+		if ( Settings::has_encryption_key() ) {
+			echo '<div class="notice notice-success inline"><p>' . esc_html__( 'Encryption key detected. Tokens will be encrypted at rest.', 'bb-hubspot-forms' ) . '</p></div>';
+			return;
+		}
+
+		echo '<div class="notice notice-warning inline">';
+		echo '<p><strong>' . esc_html__( 'Security setup required (one-time)', 'bb-hubspot-forms' ) . '</strong></p>';
+		echo '<p>' . esc_html__( 'For security, HubSpot API tokens are encrypted before being stored.', 'bb-hubspot-forms' ) . '</p>';
+		echo '<p>' . esc_html__( 'This prevents database leaks or backups from exposing sensitive credentials.', 'bb-hubspot-forms' ) . '</p>';
+		echo '<p>' . esc_html__( 'A site administrator needs to add an encryption key to your WordPress configuration.', 'bb-hubspot-forms' ) . '</p>';
+		echo '<p>' . esc_html__( 'If you’re not a developer: Send this message to your technical team or hosting provider.', 'bb-hubspot-forms' ) . '</p>';
+		echo '<p><code>define( \'BB_HUBSPOT_ENCRYPTION_KEY\', \'generate-a-long-random-secret-key-here\' );</code></p>';
+		echo '<p>' . esc_html__( 'After this is done, return here to save your HubSpot token.', 'bb-hubspot-forms' ) . '</p>';
+		echo '</div>';
+	}
+
 	public static function render_form_usage_notes(): void {
 		?>
 		<div>
@@ -619,7 +667,10 @@ final class SettingsPage {
 		}
 		$provider                     = isset( $input['captcha_provider'] ) ? sanitize_text_field( $input['captcha_provider'] ) : '';
 		$provider                     = ( $provider === 'none' ) ? '' : $provider;
-		$allowed_providers             = array( '', 'recaptcha_v3', 'turnstile', 'hcaptcha' );
+		$allowed_providers             = apply_filters(
+			'bb_hubspot_forms_captcha_allowed_providers',
+			array( '', 'recaptcha_v3' )
+		);
 		$output['captcha_provider']   = in_array( $provider, $allowed_providers, true ) ? $provider : '';
 		$min_score                     = isset( $input['captcha_min_score'] ) ? (float) $input['captcha_min_score'] : 0.5;
 		$min_score                     = max( 0.0, min( 1.0, $min_score ) );

@@ -11,16 +11,16 @@ final class Captcha {
 			return false;
 		}
 
-		switch ( $provider ) {
-			case 'recaptcha_v3':
-				return self::verify_recaptcha( $secret_key, $token, $remote_ip, $options );
-			case 'turnstile':
-				return self::verify_turnstile( $secret_key, $token, $remote_ip );
-			case 'hcaptcha':
-				return self::verify_hcaptcha( $secret_key, $token, $remote_ip );
-			default:
-				return false;
+		$verifiers = array(
+			'recaptcha_v3' => array( __CLASS__, 'verify_recaptcha' ),
+		);
+		$verifiers = apply_filters( 'bb_hubspot_forms_captcha_verifiers', $verifiers );
+
+		if ( isset( $verifiers[ $provider ] ) && is_callable( $verifiers[ $provider ] ) ) {
+			return (bool) call_user_func( $verifiers[ $provider ], $secret_key, $token, $remote_ip, $options );
 		}
+
+		return false;
 	}
 
 	private static function verify_recaptcha( string $secret, string $token, string $remote_ip, array $options ): bool {
@@ -102,54 +102,6 @@ final class Captcha {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( '[bb-hubspot-forms] Captcha: ' . $message );
 		}
-	}
-
-	private static function verify_turnstile( string $secret, string $token, string $remote_ip ): bool {
-		$response = wp_remote_post(
-			'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-			array(
-				'body' => array(
-					'secret'   => $secret,
-					'response' => $token,
-					'remoteip' => $remote_ip,
-				),
-				'timeout'   => 10,
-				'sslverify' => true,
-			)
-		);
-
-		return self::is_success_response( $response );
-	}
-
-	private static function verify_hcaptcha( string $secret, string $token, string $remote_ip ): bool {
-		$response = wp_remote_post(
-			'https://hcaptcha.com/siteverify',
-			array(
-				'body' => array(
-					'secret'   => $secret,
-					'response' => $token,
-					'remoteip' => $remote_ip,
-				),
-				'timeout'   => 10,
-				'sslverify' => true,
-			)
-		);
-
-		return self::is_success_response( $response );
-	}
-
-	private static function is_success_response( $response ): bool {
-		if ( is_wp_error( $response ) ) {
-			return false;
-		}
-
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
-		if ( ! is_array( $data ) ) {
-			return false;
-		}
-
-		return ! empty( $data['success'] );
 	}
 }
 

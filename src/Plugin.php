@@ -41,6 +41,24 @@ final class Plugin {
 		AdminController::register();
 		FormsController::register();
 		SubmitController::register();
+		add_action( 'bb_core_register', array( __CLASS__, 'register_core_panel' ) );
+	}
+
+	public static function register_core_panel(): void {
+		if ( ! function_exists( 'bb_core_register_plugin' ) ) {
+			return;
+		}
+
+		bb_core_register_plugin(
+			array(
+				'slug'  => 'bb-hubspot-forms',
+				'label' => __( 'HubSpot Forms', 'bb-hubspot-forms' ),
+				'icon'  => 'feedback',
+				'pages' => array(
+					'settings' => array( SettingsPage::class, 'render' ),
+				),
+			)
+		);
 	}
 }
 
