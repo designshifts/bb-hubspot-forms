@@ -285,7 +285,14 @@ final class SubmitController {
 	 * @return void
 	 */
 	private static function post_attribution_capture( array $fields, int $form_id ): void {
-		if ( ! defined( 'BB_TFO_ATTRIBUTION_SECRET' ) || '' === BB_TFO_ATTRIBUTION_SECRET ) {
+		$secret = '';
+		if ( defined( 'BB_TFO_ATTRIBUTION_SECRET' ) && '' !== BB_TFO_ATTRIBUTION_SECRET ) {
+			$secret = BB_TFO_ATTRIBUTION_SECRET;
+		} elseif ( defined( 'BB_HUBSPOT_ENCRYPTION_KEY' ) && '' !== BB_HUBSPOT_ENCRYPTION_KEY ) {
+			$secret = hash_hmac( 'sha256', 'bb_tfo_attr', BB_HUBSPOT_ENCRYPTION_KEY );
+		}
+
+		if ( '' === $secret ) {
 			Logger::log( 'Attribution capture skipped: missing BB_TFO_ATTRIBUTION_SECRET.', array( 'form_id' => $form_id ) );
 			return;
 		}
@@ -338,7 +345,7 @@ final class SubmitController {
 		);
 
 		$body      = wp_json_encode( $payload );
-		$signature = hash_hmac( 'sha256', $body, BB_TFO_ATTRIBUTION_SECRET );
+		$signature = hash_hmac( 'sha256', $body, $secret );
 
 		$response = wp_remote_post(
 			rest_url( 'bb-tfo/v1/attribution/email-capture' ),
@@ -353,11 +360,34 @@ final class SubmitController {
 		);
 
 		if ( is_wp_error( $response ) ) {
+			// Attempt internal dispatch fallback for local SSL issues.
+			$error_message = $response->get_error_message();
+			if ( false !== strpos( $error_message, 'SSL certificate problem' ) ) {
+				$request = new \WP_REST_Request( 'POST', '/bb-tfo/v1/attribution/email-capture' );
+				$request->set_header( 'Content-Type', 'application/json' );
+				$request->set_header( 'X-TCC-Signature', $signature );
+				$request->set_body( $body );
+				$internal_response = rest_do_request( $request );
+
+				if ( $internal_response && $internal_response->get_status() >= 200 && $internal_response->get_status() < 300 ) {
+					return;
+				}
+			}
 			Logger::log( 'Attribution capture request failed.', array( 'error' => $response->get_error_message() ) );
 			return;
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
+		// #region agent log
+		$bb_tfo_log(
+			'capture_response',
+			array(
+				'form_id' => $form_id,
+				'status' => $code,
+			),
+			'H5'
+		);
+		// #endregion
 		if ( $code < 200 || $code >= 300 ) {
 			Logger::log( 'Attribution capture rejected.', array( 'status' => $code ) );
 		}
