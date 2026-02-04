@@ -34,7 +34,7 @@ final class SettingsPage {
 		wp_add_inline_style( 'wp-admin', $css );
 	}
 
-	public static function render_page_header( string $title, string $icon = 'feedback', string $subtitle = '' ): void {
+	public static function render_page_header( string $title, string $icon = 'feedback', string $subtitle = '', string $actions_html = '' ): void {
 		?>
 		<div class="bb-hsf-header">
 			<div class="bb-hsf-header-left">
@@ -46,6 +46,20 @@ final class SettingsPage {
 					<p class="bb-hsf-header-subtitle"><?php echo esc_html( $subtitle ); ?></p>
 				<?php endif; ?>
 			</div>
+			<?php if ( $actions_html ) : ?>
+				<div class="bb-hsf-header-right">
+					<?php
+					echo wp_kses(
+						$actions_html,
+						array(
+							'div'    => array( 'class' => true ),
+							'span'   => array( 'class' => true ),
+							'button' => array( 'class' => true, 'type' => true, 'form' => true ),
+						)
+					);
+					?>
+				</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -409,9 +423,27 @@ final class SettingsPage {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			return;
 		}
+		$sections_primary   = array(
+			'bb_hubspot_forms_settings_connection',
+			'bb_hubspot_forms_settings_scopes',
+			'bb_hubspot_forms_settings_captcha',
+			'bb_hubspot_forms_settings_consent',
+			'bb_hubspot_forms_settings_appearance',
+		);
+		$sections_secondary = array(
+			'bb_hubspot_forms_settings_usage_notes',
+			'bb_hubspot_forms_settings_security',
+			'bb_hubspot_forms_settings_debug',
+		);
+		$actions_html = sprintf(
+			'<div class="bb-hsf-header-actions"><span class="bb-hsf-version">%s %s</span><button type="submit" class="button button-primary bb-hsf-save-button" form="bb-hsf-settings-form">%s</button></div>',
+			esc_html__( 'Plugin Version:', 'bb-hubspot-forms' ),
+			esc_html( BBHUBSPOT_FORMS_VERSION ),
+			esc_html__( 'Save Changes', 'bb-hubspot-forms' )
+		);
 		?>
-		<div class="wrap">
-			<?php self::render_page_header( __( 'Settings', 'bb-hubspot-forms' ), 'feedback', __( 'HubSpot Forms', 'bb-hubspot-forms' ) ); ?>
+		<div class="wrap bb-hubspot-forms-settings">
+			<?php self::render_page_header( __( 'Settings', 'bb-hubspot-forms' ), 'feedback', __( 'HubSpot Forms', 'bb-hubspot-forms' ), $actions_html ); ?>
 			<?php
 			if ( isset( $_GET['settings-updated'] ) ) {
 				add_settings_error(
@@ -424,15 +456,135 @@ final class SettingsPage {
 
 			settings_errors( 'bb_hubspot_forms_settings_group' );
 			?>
-			<form method="post" action="options.php">
+			<div class="bb-hsf-page-intro">
+				<p class="bb-hsf-page-intro__text"><?php esc_html_e( 'Connect your HubSpot account, confirm required scopes, and save. Then test the connection before syncing forms.', 'bb-hubspot-forms' ); ?></p>
+				<nav class="bb-hsf-section-nav" aria-label="<?php esc_attr_e( 'Settings sections', 'bb-hubspot-forms' ); ?>">
+					<?php foreach ( array_merge( $sections_primary, $sections_secondary ) as $section_id ) : ?>
+						<a class="bb-hsf-section-nav__link" href="#<?php echo esc_attr( $section_id ); ?>">
+							<?php echo esc_html( self::get_section_label( $section_id ) ); ?>
+						</a>
+					<?php endforeach; ?>
+				</nav>
+			</div>
+			<form method="post" action="options.php" id="bb-hsf-settings-form">
 				<?php
 				settings_fields( 'bb_hubspot_forms_settings_group' );
-				do_settings_sections( 'bb-hubspot-forms-settings' );
+				?>
+				<div class="bb-hsf-layout">
+					<div class="bb-hsf-main">
+						<?php self::render_section_group( 'bb-hubspot-forms-settings', $sections_primary ); ?>
+					</div>
+					<div class="bb-hsf-side">
+						<?php self::render_section_group( 'bb-hubspot-forms-settings', $sections_secondary ); ?>
+					</div>
+				</div>
+				<?php
 				submit_button();
 				?>
 			</form>
 		</div>
 		<?php
+	}
+
+	private static function render_section_group( string $page, array $section_ids ): void {
+		foreach ( $section_ids as $section_id ) {
+			self::render_section( $page, $section_id );
+		}
+	}
+
+	private static function render_section( string $page, string $section_id ): void {
+		global $wp_settings_sections;
+
+		if ( empty( $wp_settings_sections[ $page ][ $section_id ] ) ) {
+			return;
+		}
+
+		$section       = $wp_settings_sections[ $page ][ $section_id ];
+		$title         = isset( $section['title'] ) ? $section['title'] : '';
+		$description   = self::get_section_description( $section_id );
+		$icon          = self::get_section_icon( $section_id );
+		$slug          = self::get_section_slug( $section_id );
+		$section_class = $slug ? ' bb-hsf-card--' . $slug : '';
+		?>
+		<section class="bb-hsf-card<?php echo esc_attr( $section_class ); ?>" id="<?php echo esc_attr( $section_id ); ?>">
+			<header class="bb-hsf-card__header">
+				<?php if ( $icon ) : ?>
+					<span class="dashicons dashicons-<?php echo esc_attr( $icon ); ?> bb-hsf-card__icon" aria-hidden="true"></span>
+				<?php endif; ?>
+				<h2><?php echo esc_html( $title ); ?></h2>
+			</header>
+			<?php if ( $description ) : ?>
+				<div class="bb-hsf-card__intro">
+					<p><?php echo esc_html( $description ); ?></p>
+				</div>
+			<?php endif; ?>
+			<div class="bb-hsf-card__body">
+				<table class="form-table" role="presentation">
+					<?php do_settings_fields( $page, $section_id ); ?>
+				</table>
+			</div>
+		</section>
+		<?php
+	}
+
+	private static function get_section_description( string $section_id ): string {
+		$descriptions = array(
+			'bb_hubspot_forms_settings_connection'   => __( 'Connect your HubSpot account and verify access before syncing forms.', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_scopes'       => __( 'Assign these scopes when creating your Private App in HubSpot.', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_captcha'      => __( 'Choose a CAPTCHA provider and configure verification requirements.', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_consent'      => __( 'Control GDPR consent messaging and marketing opt-in behavior.', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_appearance'   => __( 'Adjust how HubSpot forms look on the front end.', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_usage_notes'  => __( 'Helpful reminders for editors adding HubSpot forms.', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_security'     => __( 'Security guardrails and data handling notes.', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_debug'        => __( 'Troubleshooting tools for administrators only.', 'bb-hubspot-forms' ),
+		);
+
+		return $descriptions[ $section_id ] ?? '';
+	}
+
+	private static function get_section_label( string $section_id ): string {
+		$labels = array(
+			'bb_hubspot_forms_settings_connection'   => __( 'Connection', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_scopes'       => __( 'Scopes', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_captcha'      => __( 'CAPTCHA', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_consent'      => __( 'Consent', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_appearance'   => __( 'Appearance', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_usage_notes'  => __( 'Usage', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_security'     => __( 'Security', 'bb-hubspot-forms' ),
+			'bb_hubspot_forms_settings_debug'        => __( 'Debug', 'bb-hubspot-forms' ),
+		);
+
+		return $labels[ $section_id ] ?? $section_id;
+	}
+
+	private static function get_section_icon( string $section_id ): string {
+		$icons = array(
+			'bb_hubspot_forms_settings_connection'   => 'admin-links',
+			'bb_hubspot_forms_settings_scopes'       => 'shield-alt',
+			'bb_hubspot_forms_settings_captcha'      => 'lock',
+			'bb_hubspot_forms_settings_consent'      => 'privacy',
+			'bb_hubspot_forms_settings_appearance'   => 'admin-appearance',
+			'bb_hubspot_forms_settings_usage_notes'  => 'info',
+			'bb_hubspot_forms_settings_security'     => 'shield',
+			'bb_hubspot_forms_settings_debug'        => 'admin-tools',
+		);
+
+		return $icons[ $section_id ] ?? '';
+	}
+
+	private static function get_section_slug( string $section_id ): string {
+		$slugs = array(
+			'bb_hubspot_forms_settings_connection'   => 'connection',
+			'bb_hubspot_forms_settings_scopes'       => 'scopes',
+			'bb_hubspot_forms_settings_captcha'      => 'captcha',
+			'bb_hubspot_forms_settings_consent'      => 'consent',
+			'bb_hubspot_forms_settings_appearance'   => 'appearance',
+			'bb_hubspot_forms_settings_usage_notes'  => 'usage',
+			'bb_hubspot_forms_settings_security'     => 'security',
+			'bb_hubspot_forms_settings_debug'        => 'debug',
+		);
+
+		return $slugs[ $section_id ] ?? '';
 	}
 
 	public static function render_text_field( array $args ): void {
@@ -693,4 +845,3 @@ final class SettingsPage {
 	}
 
 }
-
