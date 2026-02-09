@@ -378,16 +378,6 @@ final class SubmitController {
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
-		// #region agent log
-		$bb_tfo_log(
-			'capture_response',
-			array(
-				'form_id' => $form_id,
-				'status' => $code,
-			),
-			'H5'
-		);
-		// #endregion
 		if ( $code < 200 || $code >= 300 ) {
 			Logger::log( 'Attribution capture rejected.', array( 'status' => $code ) );
 		}

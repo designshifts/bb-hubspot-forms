@@ -71,7 +71,7 @@ final class CPT {
 			'_bbhs_form_guid',
 			array(
 				'type'              => 'string',
-			'single'            => true,
+				'single'            => true,
 				'show_in_rest'      => true,
 				'auth_callback'     => function () {
 					return current_user_can( 'edit_posts' );
@@ -86,10 +86,10 @@ final class CPT {
 			'hubspot_form',
 			'_bbhs_schema',
 			array(
-				'type'          => 'object',
-				'single'        => true,
-				'show_in_rest'  => array(
-				'schema' => array(
+				'type'              => 'object',
+				'single'            => true,
+				'show_in_rest'      => array(
+					'schema' => array(
 						'type'                 => 'object',
 						'additionalProperties' => true,
 						'properties'           => array(
@@ -108,7 +108,7 @@ final class CPT {
 										'type'     => array( 'type' => 'string' ),
 										'required' => array( 'type' => 'boolean' ),
 										'options'  => array(
-							'type'  => 'array',
+											'type'  => 'array',
 											'items' => array( 'type' => 'string' ),
 										),
 									),
@@ -117,10 +117,11 @@ final class CPT {
 						),
 					),
 				),
-				'auth_callback' => function () {
-				return current_user_can( 'edit_posts' );
-			},
-				'default'       => array(),
+				'auth_callback'     => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'sanitize_callback' => array( __CLASS__, 'sanitize_schema' ),
+				'default'           => array(),
 			)
 		);
 
@@ -129,9 +130,9 @@ final class CPT {
 			'hubspot_form',
 			'_bbhs_overrides',
 			array(
-				'type'          => 'object',
-				'single'        => true,
-				'show_in_rest'  => array(
+				'type'              => 'object',
+				'single'            => true,
+				'show_in_rest'      => array(
 					'schema' => array(
 						'type'                 => 'object',
 						'additionalProperties' => true,
@@ -151,10 +152,11 @@ final class CPT {
 						),
 					),
 				),
-				'auth_callback' => function () {
+				'auth_callback'     => function () {
 					return current_user_can( 'edit_posts' );
 				},
-				'default'       => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_overrides' ),
+				'default'           => array(
 					'order'  => array(),
 					'hidden' => array(),
 					'labels' => array(),
@@ -175,6 +177,111 @@ final class CPT {
 				},
 				'default'       => 600,
 			)
+		);
+	}
+
+	/**
+	 * Sanitize schema meta saved via REST.
+	 *
+	 * @param mixed $value Incoming schema.
+	 * @return array
+	 */
+	public static function sanitize_schema( $value ): array {
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+
+		$schema = array(
+			'portalId'  => isset( $value['portalId'] ) ? sanitize_text_field( (string) $value['portalId'] ) : '',
+			'formGuid'  => isset( $value['formGuid'] ) ? sanitize_text_field( (string) $value['formGuid'] ) : '',
+			'name'      => isset( $value['name'] ) ? sanitize_text_field( (string) $value['name'] ) : '',
+			'fetchedAt' => isset( $value['fetchedAt'] ) ? absint( $value['fetchedAt'] ) : 0,
+			'fields'    => array(),
+		);
+
+		if ( isset( $value['fields'] ) && is_array( $value['fields'] ) ) {
+			foreach ( $value['fields'] as $field ) {
+				if ( ! is_array( $field ) ) {
+					continue;
+				}
+				$name = isset( $field['name'] ) ? sanitize_key( (string) $field['name'] ) : '';
+				if ( '' === $name ) {
+					continue;
+				}
+				$options = array();
+				if ( isset( $field['options'] ) && is_array( $field['options'] ) ) {
+					foreach ( $field['options'] as $option ) {
+						if ( is_scalar( $option ) ) {
+							$sanitized = sanitize_text_field( (string) $option );
+							if ( '' !== $sanitized ) {
+								$options[] = $sanitized;
+							}
+						}
+					}
+				}
+				$schema['fields'][] = array(
+					'name'     => $name,
+					'label'    => isset( $field['label'] ) ? sanitize_text_field( (string) $field['label'] ) : $name,
+					'type'     => isset( $field['type'] ) ? sanitize_text_field( (string) $field['type'] ) : 'text',
+					'required' => ! empty( $field['required'] ),
+					'options'  => $options,
+				);
+			}
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Sanitize overrides meta saved via REST.
+	 *
+	 * @param mixed $value Incoming overrides.
+	 * @return array
+	 */
+	public static function sanitize_overrides( $value ): array {
+		if ( ! is_array( $value ) ) {
+			return array(
+				'order'  => array(),
+				'hidden' => array(),
+				'labels' => array(),
+			);
+		}
+
+		$order  = array();
+		$hidden = array();
+		$labels = array();
+
+		if ( isset( $value['order'] ) && is_array( $value['order'] ) ) {
+			foreach ( $value['order'] as $item ) {
+				$key = sanitize_key( (string) $item );
+				if ( '' !== $key ) {
+					$order[] = $key;
+				}
+			}
+		}
+
+		if ( isset( $value['hidden'] ) && is_array( $value['hidden'] ) ) {
+			foreach ( $value['hidden'] as $item ) {
+				$key = sanitize_key( (string) $item );
+				if ( '' !== $key ) {
+					$hidden[] = $key;
+				}
+			}
+		}
+
+		if ( isset( $value['labels'] ) && is_array( $value['labels'] ) ) {
+			foreach ( $value['labels'] as $key => $label ) {
+				$sanitized_key = sanitize_key( (string) $key );
+				if ( '' !== $sanitized_key ) {
+					$labels[ $sanitized_key ] = sanitize_text_field( (string) $label );
+				}
+			}
+		}
+
+		return array(
+			'order'  => $order,
+			'hidden' => $hidden,
+			'labels' => $labels,
 		);
 	}
 }

@@ -137,16 +137,17 @@ final class FormsController {
 			error_log( '[bb-hubspot-forms] Mapped fields count: ' . count( $schema['fields'] ) );
 		}
 
-		return new WP_REST_Response(
-			array(
-				'success'     => true,
-				'schema'      => $schema,
-				'_debug'      => array(
-					'rawKeys'     => array_keys( $result['data'] ),
-					'fieldCount'  => count( $schema['fields'] ),
-				),
-			),
-			200
+		$payload = array(
+			'success' => true,
+			'schema'  => $schema,
 		);
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && current_user_can( 'manage_options' ) ) {
+			$payload['_debug'] = array(
+				'rawKeys'    => array_keys( $result['data'] ),
+				'fieldCount' => count( $schema['fields'] ),
+			);
+		}
+
+		return new WP_REST_Response( $payload, 200 );
 	}
 }

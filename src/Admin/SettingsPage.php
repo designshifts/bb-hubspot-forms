@@ -832,7 +832,7 @@ final class SettingsPage {
 		$output['captcha_site_key']   = isset( $input['captcha_site_key'] ) ? sanitize_text_field( $input['captcha_site_key'] ) : '';
 		$output['captcha_secret_key'] = isset( $input['captcha_secret_key'] ) ? sanitize_text_field( $input['captcha_secret_key'] ) : '';
 		$consent_mode                 = isset( $input['consent_mode'] ) ? sanitize_text_field( $input['consent_mode'] ) : 'always';
-		$allowed_modes                = array( 'always', 'eu_only', 'disabled' );
+		$allowed_modes                = array( 'always', 'disabled' );
 		$output['consent_mode']       = in_array( $consent_mode, $allowed_modes, true ) ? $consent_mode : 'always';
 		$output['consent_text']       = isset( $input['consent_text'] ) ? sanitize_textarea_field( $input['consent_text'] ) : '';
 		$output['marketing_enabled']  = ! empty( $input['marketing_enabled'] );

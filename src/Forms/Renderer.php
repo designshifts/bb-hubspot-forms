@@ -159,7 +159,7 @@ final class Renderer {
 	/**
 	 * Render consent block.
 	 *
-	 * @param string $consent_mode Consent mode (always, eu_only, disabled).
+	 * @param string $consent_mode Consent mode (always, disabled).
 	 * @return string
 	 */
 	private static function render_consent_block( string $consent_mode ): string {

@@ -5,45 +5,12 @@
 	}
 
 	/**
-	 * EU/EEA/UK country codes for GDPR consent.
-	 */
-	const EU_COUNTRIES = [
-		'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU',
-		'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
-		'IS', 'LI', 'NO', 'GB', 'CH' // EEA + UK + Switzerland
-	];
-
-	/**
-	 * Check if country code is EU/UK.
-	 */
-	const isEUCountry = (countryCode) => {
-		return countryCode && EU_COUNTRIES.includes(countryCode.toUpperCase());
-	};
-
-	/**
-	 * Setup consent visibility based on mode and country.
+	 * Setup consent visibility based on mode.
 	 */
 	const setupConsentVisibility = (form) => {
 		const consentBlock = form.querySelector('.bb-hubspot-forms-form__consent');
 		if (!consentBlock) return;
-
-		const consentMode = form.getAttribute('data-consent-mode') || 'always';
-		const userCountry = form.getAttribute('data-user-country') || '';
-		const consentCheckbox = consentBlock.querySelector('input[name="consent_to_process"]');
-
-		if (consentMode === 'eu_only') {
-			// Only hide if we have a confirmed non-EU country.
-			if (userCountry && !isEUCountry(userCountry)) {
-				consentBlock.style.display = 'none';
-				// Auto-check consent for non-EU users.
-				if (consentCheckbox) {
-					consentCheckbox.checked = true;
-				}
-			}
-			// If no country detected, keep consent visible (safe default).
-		}
-		// For 'always' mode, consent is always visible (default).
-		// For 'disabled' mode, consent block won't be rendered at all.
+		// Consent is always shown when enabled. Disabled mode skips rendering.
 	};
 
 	/**
