@@ -97,6 +97,7 @@ RSYNC_EXCLUDES=(
   "--exclude=package-lock.json"
   "--exclude=pnpm-lock.yaml"
   "--exclude=.wordpress-org/"   # listing assets should NOT ship in plugin zip/trunk
+  "--exclude=scripts/"          # build/dev scripts must not be in WP.org zip
   "--exclude=${OUT_DIR}/"       # avoid recursion if dist exists in repo
 )
 
