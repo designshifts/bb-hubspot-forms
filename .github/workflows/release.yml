@@ -1,0 +1,25 @@
+name: GitHub Release (Attach WP.org ZIP)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build WP.org ZIP
+        run: |
+          chmod +x scripts/build-wporg-zip.sh
+          ./scripts/build-wporg-zip.sh
+
+      - name: Create Release + upload ZIP
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip

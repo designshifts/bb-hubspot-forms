@@ -1,0 +1,25 @@
+name: Deploy to WordPress.org
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build WP.org folder + ZIP
+        run: |
+          chmod +x scripts/build-wporg-zip.sh
+          ./scripts/build-wporg-zip.sh
+
+      - name: Deploy to WordPress.org
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ secrets.WPORG_SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WPORG_SVN_PASSWORD }}
+          SLUG: bb-content-types
+          BUILD_DIR: dist/wporg/bb-content-types
