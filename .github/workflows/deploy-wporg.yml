@@ -21,5 +21,5 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.WPORG_SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WPORG_SVN_PASSWORD }}
-          SLUG: bb-content-types
-          BUILD_DIR: dist/wporg/bb-content-types
+          SLUG: bb-hubspot-forms
+          BUILD_DIR: dist/wporg/bb-hubspot-forms
