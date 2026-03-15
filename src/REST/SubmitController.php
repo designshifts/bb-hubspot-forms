@@ -18,7 +18,6 @@ use BBHubspotForms\Security\Signer;
 use BBHubspotForms\Security\RateLimiter;
 use BBHubspotForms\HubSpot\Client;
 use BBHubspotForms\Settings;
-use BBHubspotForms\Spam\DomainBlocker;
 use BBHubspotForms\Spam\Captcha;
 
 /**
@@ -84,6 +83,11 @@ final class SubmitController {
 			return self::error_response( 'Missing formId or token.', 400 );
 		}
 
+		// Ensure the ID belongs to a hubspot_form CPT post.
+		if ( get_post_type( $form_id ) !== 'hubspot_form' ) {
+			return self::error_response( 'Invalid form.', 400 );
+		}
+
 		// Load new meta structure.
 		$schema        = get_post_meta( $form_id, '_bbhs_schema', true );
 		$overrides     = get_post_meta( $form_id, '_bbhs_overrides', true );
@@ -114,7 +118,11 @@ final class SubmitController {
 		$captcha_token    = isset( $params['captchaToken'] ) ? sanitize_text_field( $params['captchaToken'] ) : '';
 		$captcha_action   = isset( $params['captchaAction'] ) ? sanitize_text_field( $params['captchaAction'] ) : '';
 
-		if ( $captcha_provider && ! empty( $captcha_token ) ) {
+		if ( $captcha_provider ) {
+			if ( empty( $captcha_token ) ) {
+				Logger::log( 'Captcha token missing.', array( 'form_id' => $form_id ) );
+				return self::error_response( 'CAPTCHA verification is required.', 400 );
+			}
 			$expected_action = Settings::get( 'captcha_expected_action', 'hubspot_form_submit' );
 			$min_score       = (float) Settings::get( 'captcha_min_score', 0.5 );
 			$host            = wp_parse_url( home_url(), PHP_URL_HOST );
@@ -270,10 +278,16 @@ final class SubmitController {
 
 		if ( ! $result['success'] ) {
 			Logger::log( 'HubSpot submission failed.', array( 'form_id' => $form_id, 'error' => $result['error'] ?? '' ) );
-			return self::field_errors( array( 'submission' => $result['error'] ), 500 );
+			return self::error_response( 'Form submission failed. Please try again.', 500 );
 		}
 
-		self::post_attribution_capture( $fields, $form_id );
+		/**
+		 * Fires after a successful HubSpot form submission.
+		 *
+		 * @param array $fields  Sanitized field values keyed by field name.
+		 * @param int   $form_id WordPress post ID of the hubspot_form CPT.
+		 */
+		do_action( 'bbhubspot_forms_submitted', $fields, $form_id );
 
 		return new WP_REST_Response(
 			array(
@@ -282,112 +296,6 @@ final class SubmitController {
 			),
 			200
 		);
-	}
-
-	/**
-	 * Post attribution capture to Thinkific Ops.
-	 *
-	 * @param array $fields Form fields.
-	 * @param int   $form_id Form ID.
-	 * @return void
-	 */
-	private static function post_attribution_capture( array $fields, int $form_id ): void {
-		$secret = '';
-		if ( defined( 'BB_TFO_ATTRIBUTION_SECRET' ) && '' !== BB_TFO_ATTRIBUTION_SECRET ) {
-			$secret = BB_TFO_ATTRIBUTION_SECRET;
-		} elseif ( defined( 'BB_HUBSPOT_ENCRYPTION_KEY' ) && '' !== BB_HUBSPOT_ENCRYPTION_KEY ) {
-			$secret = hash_hmac( 'sha256', 'bb_tfo_attr', BB_HUBSPOT_ENCRYPTION_KEY );
-		}
-
-		if ( '' === $secret ) {
-			Logger::log( 'Attribution capture skipped: missing BB_TFO_ATTRIBUTION_SECRET.', array( 'form_id' => $form_id ) );
-			return;
-		}
-
-		$email = '';
-		if ( isset( $fields['email'] ) && is_email( $fields['email'] ) ) {
-			$email = $fields['email'];
-		} else {
-			foreach ( $fields as $value ) {
-				if ( is_string( $value ) && is_email( $value ) ) {
-					$email = $value;
-					break;
-				}
-			}
-		}
-		if ( '' === $email ) {
-			return;
-		}
-
-		$session_key = '';
-		if ( ! empty( $_COOKIE['tcc_session_key'] ) ) {
-			$session_key = sanitize_text_field( wp_unslash( $_COOKIE['tcc_session_key'] ) );
-		}
-		if ( '' === $session_key ) {
-			return;
-		}
-
-		$context = array();
-		if ( ! empty( $_COOKIE['bb_tfo_attribution'] ) ) {
-			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			$raw = rawurldecode( wp_unslash( $_COOKIE['bb_tfo_attribution'] ) );
-			$decoded = json_decode( $raw, true );
-			if ( is_array( $decoded ) ) {
-				$context = $decoded;
-			}
-		}
-
-		$payload = array(
-			'email'        => $email,
-			'session_key'  => $session_key,
-			'source'       => 'hubspot',
-			'source_id'    => (string) $form_id,
-			'utm_source'   => isset( $context['utm_source'] ) ? sanitize_text_field( $context['utm_source'] ) : '',
-			'utm_medium'   => isset( $context['utm_medium'] ) ? sanitize_text_field( $context['utm_medium'] ) : '',
-			'utm_campaign' => isset( $context['utm_campaign'] ) ? sanitize_text_field( $context['utm_campaign'] ) : '',
-			'utm_content'  => isset( $context['utm_content'] ) ? sanitize_text_field( $context['utm_content'] ) : '',
-			'utm_term'     => isset( $context['utm_term'] ) ? sanitize_text_field( $context['utm_term'] ) : '',
-			'landing_path' => isset( $context['landing_path'] ) ? sanitize_text_field( $context['landing_path'] ) : '',
-			'referrer'     => isset( $context['referrer'] ) ? esc_url_raw( $context['referrer'] ) : '',
-		);
-
-		$body      = wp_json_encode( $payload );
-		$signature = hash_hmac( 'sha256', $body, $secret );
-
-		$response = wp_remote_post(
-			rest_url( 'bb-tfo/v1/attribution/email-capture' ),
-			array(
-				'headers' => array(
-					'Content-Type'   => 'application/json',
-					'X-TCC-Signature' => $signature,
-				),
-				'body'    => $body,
-				'timeout' => 10,
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			// Attempt internal dispatch fallback for local SSL issues.
-			$error_message = $response->get_error_message();
-			if ( false !== strpos( $error_message, 'SSL certificate problem' ) ) {
-				$request = new \WP_REST_Request( 'POST', '/bb-tfo/v1/attribution/email-capture' );
-				$request->set_header( 'Content-Type', 'application/json' );
-				$request->set_header( 'X-TCC-Signature', $signature );
-				$request->set_body( $body );
-				$internal_response = rest_do_request( $request );
-
-				if ( $internal_response && $internal_response->get_status() >= 200 && $internal_response->get_status() < 300 ) {
-					return;
-				}
-			}
-			Logger::log( 'Attribution capture request failed.', array( 'error' => $response->get_error_message() ) );
-			return;
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		if ( $code < 200 || $code >= 300 ) {
-			Logger::log( 'Attribution capture rejected.', array( 'status' => $code ) );
-		}
 	}
 
 	/**

@@ -597,11 +597,12 @@ final class SettingsPage {
 		$note        = isset( $args['note'] ) ? $args['note'] : '';
 		$input_class = isset( $args['input_class'] ) ? $args['input_class'] : '';
 
-		if ( $key === 'private_token' ) {
+		$is_secret_field = ( $key === 'private_token' || $key === 'captcha_secret_key' );
+		if ( $is_secret_field ) {
 			$value = '';
-			$stored = Settings::get_raw( 'private_token' );
+			$stored = Settings::get_raw( $key );
 			if ( $stored !== '' ) {
-				$placeholder = __( 'Token saved — enter a new token to replace', 'bb-hubspot-forms' );
+				$placeholder = __( 'Key saved — enter a new value to replace', 'bb-hubspot-forms' );
 			}
 		}
 		printf(
@@ -617,15 +618,14 @@ final class SettingsPage {
 			printf( '<p class="description">%s</p>', esc_html( $description ) );
 		}
 		if ( $note ) {
-			$note_class = $key === 'private_token' ? 'bb-hubspot-forms-token-note' : '';
-			printf( '<p class="description %1$s"><em>%2$s</em></p>', esc_attr( $note_class ), esc_html( $note ) );
+			printf( '<p class="description"><em>%s</em></p>', esc_html( $note ) );
 		}
-		if ( $key === 'private_token' ) {
-			$stored = Settings::get_raw( 'private_token' );
+		if ( $is_secret_field ) {
+			$stored = Settings::get_raw( $key );
 			if ( $stored !== '' ) {
-				printf( '<p class="bb-hubspot-forms-token-status">%s</p>', esc_html__( 'A token is currently saved.', 'bb-hubspot-forms' ) );
+				printf( '<p class="bb-hubspot-forms-token-status">%s</p>', esc_html__( 'A value is currently saved.', 'bb-hubspot-forms' ) );
 				if ( Settings::has_encryption_key() && ! Settings::is_encrypted_value( $stored ) ) {
-					printf( '<p class="description">%s</p>', esc_html__( 'Saved token is not encrypted yet. Save settings to upgrade encryption.', 'bb-hubspot-forms' ) );
+					printf( '<p class="description">%s</p>', esc_html__( 'Saved value is not encrypted yet. Save settings to upgrade encryption.', 'bb-hubspot-forms' ) );
 				}
 			}
 		}
@@ -833,7 +833,16 @@ final class SettingsPage {
 		$expected_action               = isset( $input['captcha_expected_action'] ) ? sanitize_text_field( $input['captcha_expected_action'] ) : '';
 		$output['captcha_expected_action'] = $expected_action ? $expected_action : 'hubspot_form_submit';
 		$output['captcha_site_key']   = isset( $input['captcha_site_key'] ) ? sanitize_text_field( $input['captcha_site_key'] ) : '';
-		$output['captcha_secret_key'] = isset( $input['captcha_secret_key'] ) ? sanitize_text_field( $input['captcha_secret_key'] ) : '';
+		$existing_captcha_secret      = Settings::get_raw( 'captcha_secret_key' );
+		$new_captcha_secret           = isset( $input['captcha_secret_key'] ) ? sanitize_text_field( $input['captcha_secret_key'] ) : '';
+		$new_captcha_secret           = trim( $new_captcha_secret );
+		if ( $new_captcha_secret === '' ) {
+			$output['captcha_secret_key'] = $existing_captcha_secret;
+		} elseif ( Settings::has_encryption_key() && ! Settings::is_encrypted_value( $new_captcha_secret ) ) {
+			$output['captcha_secret_key'] = Settings::encrypt_for_storage( $new_captcha_secret );
+		} else {
+			$output['captcha_secret_key'] = $new_captcha_secret;
+		}
 		$consent_mode                 = isset( $input['consent_mode'] ) ? sanitize_text_field( $input['consent_mode'] ) : 'always';
 		$allowed_modes                = array( 'always', 'disabled' );
 		$output['consent_mode']       = in_array( $consent_mode, $allowed_modes, true ) ? $consent_mode : 'always';

@@ -26,7 +26,7 @@ final class Settings {
 			return $default;
 		}
 
-		if ( $key === 'private_token' ) {
+		if ( $key === 'private_token' || $key === 'captcha_secret_key' ) {
 			$stored = is_string( $options[ $key ] ) ? $options[ $key ] : '';
 			if ( self::is_encrypted_value( $stored ) ) {
 				$decrypted = self::decrypt_from_storage( $stored );
