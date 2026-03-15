@@ -7,6 +7,10 @@
 
 namespace BBHubspotForms\Admin;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Enqueues editor block and assets for hubspot_form CPT.
  */

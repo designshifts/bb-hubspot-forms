@@ -2,6 +2,10 @@
 
 namespace BBHubspotForms\Spam;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 final class Captcha {
 	public static function verify( string $provider, string $secret_key, string $token, string $remote_ip = '', array $options = array() ): bool {
 		if ( empty( $provider ) ) {
@@ -14,6 +18,9 @@ final class Captcha {
 		$verifiers = array(
 			'recaptcha_v3' => array( __CLASS__, 'verify_recaptcha' ),
 		);
+		$verifiers = apply_filters( 'bbhubspot_forms_captcha_verifiers_map', $verifiers );
+		// Back-compat legacy hook.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 		$verifiers = apply_filters( 'bb_hubspot_forms_captcha_verifiers', $verifiers );
 
 		if ( isset( $verifiers[ $provider ] ) && is_callable( $verifiers[ $provider ] ) ) {
@@ -99,9 +106,7 @@ final class Captcha {
 	 * @param string $message Failure message.
 	 */
 	private static function log_failure( string $message ): void {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( '[bb-hubspot-forms] Captcha: ' . $message );
-		}
+		\BBHubspotForms\Logger::log( 'Captcha failure.', array( 'message' => $message ) );
 	}
 }
 

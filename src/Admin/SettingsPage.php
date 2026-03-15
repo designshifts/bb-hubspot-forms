@@ -2,6 +2,10 @@
 
 namespace BBHubspotForms\Admin;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BBHubspotForms\Settings;
 
 final class SettingsPage {
@@ -15,8 +19,10 @@ final class SettingsPage {
 	}
 
 	public static function enqueue_header_styles( string $hook ): void {
-		$page   = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
-		$plugin = isset( $_GET['plugin'] ) ? sanitize_key( $_GET['plugin'] ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$plugin = isset( $_GET['plugin'] ) ? sanitize_key( wp_unslash( $_GET['plugin'] ) ) : '';
 
 		$is_plugin_page = 'bb-hubspot-forms-settings' === $page;
 		$is_core_page   = 'bb-core' === $page && 'bb-hubspot-forms' === $plugin;
@@ -149,16 +155,21 @@ final class SettingsPage {
 			'bb-hubspot-forms-settings'
 		);
 
+		$captcha_provider_options = apply_filters(
+			'bbhubspot_forms_captcha_provider_choices',
+			array(
+				''            => __( 'None (disabled)', 'bb-hubspot-forms' ),
+				'recaptcha_v3' => __( 'reCAPTCHA v3', 'bb-hubspot-forms' ),
+			)
+		);
+		// Back-compat legacy hook.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		$captcha_provider_options = apply_filters( 'bb_hubspot_forms_captcha_provider_options', $captcha_provider_options );
+
 		self::add_select_field(
 			'captcha_provider',
 			__( 'Captcha Provider', 'bb-hubspot-forms' ),
-			apply_filters(
-				'bb_hubspot_forms_captcha_provider_options',
-				array(
-					''            => __( 'None (disabled)', 'bb-hubspot-forms' ),
-					'recaptcha_v3' => __( 'reCAPTCHA v3', 'bb-hubspot-forms' ),
-				)
-			),
+			$captcha_provider_options,
 			__( 'Choose a CAPTCHA provider to help prevent spam submissions.', 'bb-hubspot-forms' ),
 			'bb_hubspot_forms_settings_captcha'
 		);
@@ -423,7 +434,7 @@ final class SettingsPage {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			return;
 		}
-		$sections_primary   = array(
+		$sections_primary = array(
 			'bb_hubspot_forms_settings_connection',
 			'bb_hubspot_forms_settings_scopes',
 			'bb_hubspot_forms_settings_captcha',
@@ -444,18 +455,7 @@ final class SettingsPage {
 		?>
 		<div class="wrap bb-hubspot-forms-settings">
 			<?php self::render_page_header( __( 'Settings', 'bb-hubspot-forms' ), 'feedback', __( 'HubSpot Forms', 'bb-hubspot-forms' ), $actions_html ); ?>
-			<?php
-			if ( isset( $_GET['settings-updated'] ) ) {
-				add_settings_error(
-					'bb_hubspot_forms_settings_group',
-					'settings_updated',
-					__( 'Settings saved.', 'bb-hubspot-forms' ),
-					'updated'
-				);
-			}
-
-			settings_errors( 'bb_hubspot_forms_settings_group' );
-			?>
+			<?php settings_errors( 'bb_hubspot_forms_settings_group' ); ?>
 			<div class="bb-hsf-page-intro">
 				<p class="bb-hsf-page-intro__text"><?php esc_html_e( 'Connect your HubSpot account, confirm required scopes, and save. Then test the connection before syncing forms.', 'bb-hubspot-forms' ); ?></p>
 				<nav class="bb-hsf-section-nav" aria-label="<?php esc_attr_e( 'Settings sections', 'bb-hubspot-forms' ); ?>">
@@ -820,9 +820,12 @@ final class SettingsPage {
 		$provider                     = isset( $input['captcha_provider'] ) ? sanitize_text_field( $input['captcha_provider'] ) : '';
 		$provider                     = ( $provider === 'none' ) ? '' : $provider;
 		$allowed_providers             = apply_filters(
-			'bb_hubspot_forms_captcha_allowed_providers',
+			'bbhubspot_forms_allowed_captcha_providers',
 			array( '', 'recaptcha_v3' )
 		);
+		// Back-compat legacy hook.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		$allowed_providers = apply_filters( 'bb_hubspot_forms_captcha_allowed_providers', $allowed_providers );
 		$output['captcha_provider']   = in_array( $provider, $allowed_providers, true ) ? $provider : '';
 		$min_score                     = isset( $input['captcha_min_score'] ) ? (float) $input['captcha_min_score'] : 0.5;
 		$min_score                     = max( 0.0, min( 1.0, $min_score ) );

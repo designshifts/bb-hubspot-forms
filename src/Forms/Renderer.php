@@ -7,6 +7,10 @@
 
 namespace BBHubspotForms\Forms;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BBHubspotForms\Security\Signer;
 use BBHubspotForms\Settings;
 
@@ -112,7 +116,7 @@ final class Renderer {
 				'bb-hubspot-forms-recaptcha',
 				'https://www.google.com/recaptcha/api.js?render=' . rawurlencode( $captcha_site_key ),
 				array(),
-				null,
+				BBHUBSPOT_FORMS_VERSION,
 				true
 			);
 		}
@@ -232,9 +236,12 @@ final class Renderer {
 	private static function render_fields( array $fields, array $overrides ): string {
 		$output = '';
 		$allowed_types = apply_filters(
-			'bb_hs_allowed_field_types',
+			'bbhubspot_forms_allowed_field_types',
 			array( 'text', 'email', 'tel', 'textarea', 'select', 'checkbox', 'radio', 'url' )
 		);
+		// Back-compat legacy hook.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		$allowed_types = apply_filters( 'bb_hs_allowed_field_types', $allowed_types );
 
 		$order  = isset( $overrides['order'] ) && is_array( $overrides['order'] ) ? $overrides['order'] : array();
 		$hidden = isset( $overrides['hidden'] ) && is_array( $overrides['hidden'] ) ? $overrides['hidden'] : array();

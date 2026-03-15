@@ -7,6 +7,10 @@
 
 namespace BBHubspotForms\Forms;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Registers the hubspot_form CPT and meta keys.
  */

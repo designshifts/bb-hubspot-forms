@@ -2,6 +2,11 @@
 
 namespace BBHubspotForms\HubSpot;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use BBHubspotForms\Logger;
 use BBHubspotForms\Settings;
 
 final class Client {
@@ -166,10 +171,13 @@ final class Client {
 			$payload['legalConsentOptions'] = $consent;
 		}
 
-		// Log the submission attempt if debug mode is enabled.
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( '[bb-hubspot-forms] Submitting to HubSpot: portal=' . $portal_id . ', form=' . $hubspot_form_id );
-		}
+		Logger::log(
+			'Submitting to HubSpot.',
+			array(
+				'portal_id' => $portal_id,
+				'form_id'   => $hubspot_form_id,
+			)
+		);
 
 		$response = wp_remote_post(
 			$url,
@@ -186,9 +194,7 @@ final class Client {
 
 		if ( is_wp_error( $response ) ) {
 			$error_msg = $response->get_error_message();
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( '[bb-hubspot-forms] Connection error: ' . $error_msg );
-			}
+			Logger::log( 'HubSpot connection error.', array( 'error' => $error_msg ) );
 			return array(
 				'success' => false,
 				'error'   => 'Connection error: ' . $error_msg,
@@ -200,9 +206,7 @@ final class Client {
 		$data        = json_decode( $body, true );
 
 		if ( $status_code >= 200 && $status_code < 300 ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( '[bb-hubspot-forms] Submission successful' );
-			}
+			Logger::log( 'HubSpot submission successful.' );
 			return array(
 				'success' => true,
 				'data'    => $data,
@@ -229,10 +233,14 @@ final class Client {
 			}
 		}
 
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( '[bb-hubspot-forms] Submission failed: status=' . $status_code . ', message=' . $message );
-			error_log( '[bb-hubspot-forms] Response body: ' . $body );
-		}
+		Logger::log(
+			'HubSpot submission failed.',
+			array(
+				'status'  => $status_code,
+				'message' => $message,
+				'body'    => $body,
+			)
+		);
 
 		return array(
 			'success' => false,

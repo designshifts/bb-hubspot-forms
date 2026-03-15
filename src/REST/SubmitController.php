@@ -7,6 +7,10 @@
 
 namespace BBHubspotForms\REST;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WP_REST_Request;
 use WP_REST_Response;
 use BBHubspotForms\Logger;
@@ -252,6 +256,9 @@ final class SubmitController {
 			$payload['legalConsentOptions'] = $consent;
 		}
 
+		$payload = apply_filters( 'bbhubspot_forms_submission_payload', $payload, $form_id, $fields );
+		// Back-compat legacy hook.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 		$payload = apply_filters( 'bb_hs_submission_payload', $payload, $form_id, $fields );
 
 		$result = Client::submit_form(
@@ -392,7 +399,10 @@ final class SubmitController {
 	 */
 	private static function validate_fields( array $schema_map, array $fields ): array {
 		$errors        = array();
-		$block_domains = apply_filters( 'bb_hubspot_forms_block_email_domains', false );
+		$block_domains = apply_filters( 'bbhubspot_forms_blocked_email_domains_enabled', false );
+		// Back-compat legacy hook.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		$block_domains = apply_filters( 'bb_hubspot_forms_block_email_domains', $block_domains );
 		$can_block     = $block_domains && class_exists( '\BBHubspotForms\Spam\DomainBlocker' );
 
 		foreach ( $schema_map as $name => $field_def ) {

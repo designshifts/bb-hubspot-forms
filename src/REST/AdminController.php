@@ -2,6 +2,10 @@
 
 namespace BBHubspotForms\REST;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WP_REST_Response;
 use BBHubspotForms\HubSpot\Client;
 

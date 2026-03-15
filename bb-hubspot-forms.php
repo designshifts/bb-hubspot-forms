@@ -33,7 +33,6 @@ register_deactivation_hook( __FILE__, 'bb_hubspot_forms_deactivate' );
 add_action(
 	'plugins_loaded',
 	static function () {
-		load_plugin_textdomain( 'bb-hubspot-forms', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 		\BBHubspotForms\Plugin::init();
 	}
 );
@@ -43,6 +42,7 @@ add_action(
  *
  * @return void
  */
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
 function bb_hubspot_forms_activate(): void {
 	\BBHubspotForms\Plugin::init();
 	\BBHubspotForms\Forms\CPT::register_cpt();
@@ -54,6 +54,7 @@ function bb_hubspot_forms_activate(): void {
  *
  * @return void
  */
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
 function bb_hubspot_forms_deactivate(): void {
 	bb_hubspot_forms_clear_transients();
 	flush_rewrite_rules();
@@ -64,10 +65,11 @@ function bb_hubspot_forms_deactivate(): void {
  *
  * @return void
  */
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
 function bb_hubspot_forms_clear_transients(): void {
 	global $wpdb;
-	$like = $wpdb->esc_like( '_transient_bb-hubspot-forms_' ) . '%';
-	$timeout_like = $wpdb->esc_like( '_transient_timeout_bb-hubspot-forms_' ) . '%';
+	$bbhs_like         = $wpdb->esc_like( '_transient_bb-hubspot-forms_' ) . '%';
+	$bbhs_timeout_like = $wpdb->esc_like( '_transient_timeout_bb-hubspot-forms_' ) . '%';
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $like, $timeout_like ) );
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $bbhs_like, $bbhs_timeout_like ) );
 }

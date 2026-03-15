@@ -2,6 +2,10 @@
 
 namespace BBHubspotForms;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BBHubspotForms\Admin\EditorAssets;
 use BBHubspotForms\Admin\SettingsPage;
 use BBHubspotForms\Forms\CPT;

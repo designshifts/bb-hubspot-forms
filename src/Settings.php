@@ -2,6 +2,10 @@
 
 namespace BBHubspotForms;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 final class Settings {
 	public const OPTION_KEY = 'bb_hubspot_forms_settings';
 	private const ENCRYPTION_PREFIX = 'enc_v1:';
@@ -173,6 +177,7 @@ final class Settings {
 
 	private static function maybe_log_decrypt_failure(): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( '[bb-hubspot-forms] Token decrypt failed.' );
 		}
 	}

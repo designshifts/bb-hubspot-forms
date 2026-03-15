@@ -7,6 +7,10 @@
 
 namespace BBHubspotForms\REST;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WP_REST_Request;
 use WP_REST_Response;
 use BBHubspotForms\HubSpot\Client;
@@ -129,13 +133,6 @@ final class FormsController {
 		}
 
 		$schema = SchemaMapper::map( $result['data'] );
-
-		// Debug: log the raw response keys if debug is enabled.
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( '[bb-hubspot-forms] Schema fetch for ' . $form_guid );
-			error_log( '[bb-hubspot-forms] Raw response keys: ' . implode( ', ', array_keys( $result['data'] ) ) );
-			error_log( '[bb-hubspot-forms] Mapped fields count: ' . count( $schema['fields'] ) );
-		}
 
 		$payload = array(
 			'success' => true,

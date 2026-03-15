@@ -2,6 +2,10 @@
 
 namespace BBHubspotForms;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 final class Logger {
 	public static function log( string $message, array $context = array() ): void {
 		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
@@ -12,6 +16,7 @@ final class Logger {
 		}
 
 		$payload = $context ? wp_json_encode( self::redact( $context ) ) : '';
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( trim( '[BB HubSpot Forms] ' . $message . ' ' . $payload ) );
 	}
 
