@@ -1,0 +1,291 @@
+<?php
+/**
+ * HubSpot Form CPT registration.
+ *
+ * @package BBHubspotForms
+ */
+
+namespace BBHubspotForms\Forms;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Registers the hubspot_form CPT and meta keys.
+ */
+final class CPT {
+
+	/**
+	 * Register hooks.
+	 *
+	 * @return void
+	 */
+	public static function register(): void {
+		add_action( 'init', array( __CLASS__, 'register_cpt' ) );
+		add_action( 'init', array( __CLASS__, 'register_meta' ) );
+	}
+
+	/**
+	 * Register the hubspot_form CPT.
+	 *
+	 * @return void
+	 */
+	public static function register_cpt(): void {
+		register_post_type(
+			'hubspot_form',
+			array(
+				'labels'          => array(
+					'name'               => __( 'HubSpot Forms', 'bb-forms-for-hubspot' ),
+					'singular_name'      => __( 'HubSpot Form', 'bb-forms-for-hubspot' ),
+					'add_new'            => __( 'Add New', 'bb-forms-for-hubspot' ),
+					'add_new_item'       => __( 'Add New HubSpot Form', 'bb-forms-for-hubspot' ),
+					'edit_item'          => __( 'Edit HubSpot Form', 'bb-forms-for-hubspot' ),
+					'new_item'           => __( 'New HubSpot Form', 'bb-forms-for-hubspot' ),
+					'view_item'          => __( 'View HubSpot Form', 'bb-forms-for-hubspot' ),
+					'search_items'       => __( 'Search HubSpot Forms', 'bb-forms-for-hubspot' ),
+					'not_found'          => __( 'No forms found.', 'bb-forms-for-hubspot' ),
+					'not_found_in_trash' => __( 'No forms found in Trash.', 'bb-forms-for-hubspot' ),
+				),
+				'public'          => false,
+				'show_ui'         => true,
+				'show_in_menu'    => true,
+				'show_in_rest'    => true,
+				'capability_type' => 'post',
+				'has_archive'     => false,
+				'supports'        => array( 'title', 'editor', 'custom-fields' ),
+				'menu_icon'       => 'dashicons-feedback',
+				'template'        => array(
+					array( 'bb-forms-for-hubspot/form-config' ),
+				),
+				'template_lock'   => 'all',
+			)
+		);
+	}
+
+	/**
+	 * Register post meta for the hubspot_form CPT.
+	 *
+	 * @return void
+	 */
+	public static function register_meta(): void {
+		// Form GUID from HubSpot.
+		register_post_meta(
+			'hubspot_form',
+			'_bbhs_form_guid',
+			array(
+				'type'              => 'string',
+				'single'            => true,
+				'show_in_rest'      => true,
+				'auth_callback'     => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => '',
+			)
+		);
+
+		// Schema synced from HubSpot.
+		register_post_meta(
+			'hubspot_form',
+			'_bbhs_schema',
+			array(
+				'type'              => 'object',
+				'single'            => true,
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'                 => 'object',
+						'additionalProperties' => true,
+						'properties'           => array(
+							'portalId'  => array( 'type' => 'string' ),
+							'formGuid'  => array( 'type' => 'string' ),
+							'name'      => array( 'type' => 'string' ),
+							'fetchedAt' => array( 'type' => 'integer' ),
+							'fields'    => array(
+								'type'  => 'array',
+								'items' => array(
+									'type'                 => 'object',
+									'additionalProperties' => true,
+									'properties'           => array(
+										'name'     => array( 'type' => 'string' ),
+										'label'    => array( 'type' => 'string' ),
+										'type'     => array( 'type' => 'string' ),
+										'required' => array( 'type' => 'boolean' ),
+										'options'  => array(
+											'type'  => 'array',
+											'items' => array( 'type' => 'string' ),
+										),
+									),
+								),
+							),
+						),
+					),
+				),
+				'auth_callback'     => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'sanitize_callback' => array( __CLASS__, 'sanitize_schema' ),
+				'default'           => array(),
+			)
+		);
+
+		// User overrides (order, hidden, labels).
+		register_post_meta(
+			'hubspot_form',
+			'_bbhs_overrides',
+			array(
+				'type'              => 'object',
+				'single'            => true,
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'                 => 'object',
+						'additionalProperties' => true,
+						'properties'           => array(
+							'order'  => array(
+								'type'  => 'array',
+								'items' => array( 'type' => 'string' ),
+							),
+							'hidden' => array(
+								'type'  => 'array',
+								'items' => array( 'type' => 'string' ),
+							),
+							'labels' => array(
+								'type'                 => 'object',
+								'additionalProperties' => array( 'type' => 'string' ),
+							),
+						),
+					),
+				),
+				'auth_callback'     => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'sanitize_callback' => array( __CLASS__, 'sanitize_overrides' ),
+				'default'           => array(
+					'order'  => array(),
+					'hidden' => array(),
+					'labels' => array(),
+				),
+			)
+		);
+
+		// Token TTL for signed tokens.
+		register_post_meta(
+			'hubspot_form',
+			'_bbhs_token_ttl',
+			array(
+				'type'          => 'integer',
+				'single'        => true,
+				'show_in_rest'  => true,
+				'auth_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'default'       => 600,
+			)
+		);
+	}
+
+	/**
+	 * Sanitize schema meta saved via REST.
+	 *
+	 * @param mixed $value Incoming schema.
+	 * @return array
+	 */
+	public static function sanitize_schema( $value ): array {
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+
+		$schema = array(
+			'portalId'  => isset( $value['portalId'] ) ? sanitize_text_field( (string) $value['portalId'] ) : '',
+			'formGuid'  => isset( $value['formGuid'] ) ? sanitize_text_field( (string) $value['formGuid'] ) : '',
+			'name'      => isset( $value['name'] ) ? sanitize_text_field( (string) $value['name'] ) : '',
+			'fetchedAt' => isset( $value['fetchedAt'] ) ? absint( $value['fetchedAt'] ) : 0,
+			'fields'    => array(),
+		);
+
+		if ( isset( $value['fields'] ) && is_array( $value['fields'] ) ) {
+			foreach ( $value['fields'] as $field ) {
+				if ( ! is_array( $field ) ) {
+					continue;
+				}
+				$name = isset( $field['name'] ) ? sanitize_key( (string) $field['name'] ) : '';
+				if ( '' === $name ) {
+					continue;
+				}
+				$options = array();
+				if ( isset( $field['options'] ) && is_array( $field['options'] ) ) {
+					foreach ( $field['options'] as $option ) {
+						if ( is_scalar( $option ) ) {
+							$sanitized = sanitize_text_field( (string) $option );
+							if ( '' !== $sanitized ) {
+								$options[] = $sanitized;
+							}
+						}
+					}
+				}
+				$schema['fields'][] = array(
+					'name'     => $name,
+					'label'    => isset( $field['label'] ) ? sanitize_text_field( (string) $field['label'] ) : $name,
+					'type'     => isset( $field['type'] ) ? sanitize_text_field( (string) $field['type'] ) : 'text',
+					'required' => ! empty( $field['required'] ),
+					'options'  => $options,
+				);
+			}
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Sanitize overrides meta saved via REST.
+	 *
+	 * @param mixed $value Incoming overrides.
+	 * @return array
+	 */
+	public static function sanitize_overrides( $value ): array {
+		if ( ! is_array( $value ) ) {
+			return array(
+				'order'  => array(),
+				'hidden' => array(),
+				'labels' => array(),
+			);
+		}
+
+		$order  = array();
+		$hidden = array();
+		$labels = array();
+
+		if ( isset( $value['order'] ) && is_array( $value['order'] ) ) {
+			foreach ( $value['order'] as $item ) {
+				$key = sanitize_key( (string) $item );
+				if ( '' !== $key ) {
+					$order[] = $key;
+				}
+			}
+		}
+
+		if ( isset( $value['hidden'] ) && is_array( $value['hidden'] ) ) {
+			foreach ( $value['hidden'] as $item ) {
+				$key = sanitize_key( (string) $item );
+				if ( '' !== $key ) {
+					$hidden[] = $key;
+				}
+			}
+		}
+
+		if ( isset( $value['labels'] ) && is_array( $value['labels'] ) ) {
+			foreach ( $value['labels'] as $key => $label ) {
+				$sanitized_key = sanitize_key( (string) $key );
+				if ( '' !== $sanitized_key ) {
+					$labels[ $sanitized_key ] = sanitize_text_field( (string) $label );
+				}
+			}
+		}
+
+		return array(
+			'order'  => $order,
+			'hidden' => $hidden,
+			'labels' => $labels,
+		);
+	}
+}

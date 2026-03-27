@@ -1,0 +1,253 @@
+.bb-forms-for-hubspot-settings {
+  color: #1d2327;
+}
+
+.bb-hsf-page-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.bb-hsf-page-intro__text {
+  margin: 0;
+  color: #50575e;
+  max-width: 720px;
+}
+
+.bb-hsf-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.bb-hsf-section-nav__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #dcdcde;
+  background: #fff;
+  color: #2271b1;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bb-hsf-section-nav__link:hover {
+  border-color: #8c8f94;
+  color: #135e96;
+}
+
+.bb-hsf-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.bb-hsf-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bb-hsf-version {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.bb-hsf-save-button {
+  padding: 6px 16px;
+  border-radius: 8px;
+}
+
+.bb-hsf-layout {
+  display: grid;
+  gap: 20px;
+}
+
+.bb-hsf-card {
+  background: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+}
+
+.bb-hsf-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #eef1f4;
+}
+
+.bb-hsf-card__header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.bb-hsf-card__icon {
+  color: #0a6b2c;
+}
+
+.bb-hsf-card__intro {
+  padding: 12px 18px 0;
+  color: #50575e;
+}
+
+.bb-hsf-card__intro p {
+  margin: 0 0 12px;
+}
+
+.bb-hsf-card__body {
+  padding: 0 18px 16px;
+}
+
+.bb-forms-for-hubspot-settings .form-table {
+  margin: 0;
+  border-collapse: collapse;
+}
+
+.bb-forms-for-hubspot-settings .form-table th {
+  display: block;
+  width: 100%;
+  padding: 14px 0 6px;
+  color: #1d2327;
+  font-weight: 600;
+}
+
+.bb-forms-for-hubspot-settings .form-table td {
+  display: block;
+  padding: 0 0 14px;
+}
+
+.bb-forms-for-hubspot-settings .form-table tr {
+  display: block;
+}
+
+.bb-forms-for-hubspot-settings .form-table tr + tr {
+  border-top: 1px solid #f0f0f1;
+}
+
+.bb-forms-for-hubspot-settings .form-table .description {
+  margin-top: 6px;
+}
+
+.bb-forms-for-hubspot-settings .notice.inline {
+  margin: 0;
+}
+
+.bb-forms-for-hubspot-settings input[type="text"],
+.bb-forms-for-hubspot-settings input[type="password"],
+.bb-forms-for-hubspot-settings input[type="number"],
+.bb-forms-for-hubspot-settings textarea,
+.bb-forms-for-hubspot-settings select {
+  border-radius: 8px;
+  border-color: #d0d7de;
+  background: #f8fafc;
+  padding: 8px 12px;
+}
+
+.bb-forms-for-hubspot-settings input[type="text"]:focus,
+.bb-forms-for-hubspot-settings input[type="password"]:focus,
+.bb-forms-for-hubspot-settings input[type="number"]:focus,
+.bb-forms-for-hubspot-settings textarea:focus,
+.bb-forms-for-hubspot-settings select:focus {
+  border-color: #72aee6;
+  box-shadow: 0 0 0 1px #72aee6;
+  background: #fff;
+}
+
+.bb-forms-for-hubspot-settings .button {
+  border-radius: 8px;
+}
+
+.bb-forms-for-hubspot-scopes {
+  margin-top: 8px;
+}
+
+.bb-forms-for-hubspot-scopes__intro {
+  margin-bottom: 12px;
+}
+
+.bb-forms-for-hubspot-scopes__group {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid #dcdcde;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.bb-forms-for-hubspot-scopes__group h4 {
+  margin: 0 0 8px;
+}
+
+.bb-forms-for-hubspot-scopes__list {
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+}
+
+.bb-forms-for-hubspot-scopes__list li {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bb-forms-for-hubspot-scopes__note {
+  margin: 0;
+  color: #50575e;
+}
+
+.bb-forms-for-hubspot-scopes__grid {
+  display: grid;
+  gap: 12px;
+}
+
+.bb-forms-for-hubspot-token-status {
+  margin: 6px 0 0;
+  font-weight: 600;
+  color: #1d2327;
+}
+
+.bb-forms-for-hubspot-token-note,
+.bb-forms-for-hubspot-token-status {
+  color: #1b5e20;
+}
+
+@media (min-width: 960px) {
+  .bb-forms-for-hubspot-scopes__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .bb-hsf-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    align-items: start;
+  }
+
+  .bb-hsf-side .bb-hsf-card__body {
+    padding-bottom: 8px;
+  }
+}
+
+@media (max-width: 960px) {
+  .bb-hsf-page-intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
